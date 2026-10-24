@@ -91,5 +91,16 @@ jobs:
           python3 scripts/setup_lan_env.py
           docker compose --env-file .env.lan -f docker-compose.open-gateway.yml config --quiet
           docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.admin-test.yml config --quiet
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.no-auth-test.yml config --quiet
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.no-auth-test.yml config --format json > /tmp/no-auth-config.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/no-auth-config.json'))
+          assert d['services']['web']['environment']['MIRROR_UNSAFE_NO_AUTH_TEST'] == 'true'
+          ports = d['services']['web']['ports']
+          assert len(ports) == 1, ports
+          assert ports[0]['host_ip'] == '127.0.0.1', ports
+          print('Diagnostic passwordless mode is bound to localhost only')
+          PY
           docker build -t chatgpt-mirror-open-gateway:test gateway_native
           ! grep -Eq '^[[:space:]]*image:[[:space:]]*dairoot/|^[[:space:]]*watchtower:|^[[:space:]]*cf5s:' docker-compose.open-gateway.yml
