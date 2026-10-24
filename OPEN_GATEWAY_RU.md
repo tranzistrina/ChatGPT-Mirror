@@ -79,6 +79,45 @@ LAN клиент без интернета -> Mac IP:50002 -> Caddy -> лока�
 
 После запуска интерфейсы доступны на том же IP и порту 50002. Остановка через Ctrl+C. Два способа запуска одновременно использовать нельзя.
 
+## Если вход показывает китайские надписи или не принимает пароль
+
+При переходе с главной страницы используется именно локальный вход **Django /admin/#/login**, а не авторизация самого ChatGPT. По умолчанию логин — admin. Пароль из секретного файла .env.lan; случайные пароли не работают:
+
+    grep -E '^(ADMIN_USERNAME|ADMIN_PASSWORD)=' .env.lan
+
+Пароль никогда не публикуйте в GitHub или чате. Если вы вводили .env из старого deploy.sh, он **не используется** в новой конфигурации: берётся именно .env.lan.
+
+**Сначала остановите оригинальный compose** (в той же папке проекта; НЕ используйте -v, чтобы не стереть старую базу):
+
+    docker compose -f docker-compose.yml down
+
+Проверьте правильную ветку, затем обновите локальный фронтенд и сервис:
+
+    git switch feature/open-access-token-gateway
+    git pull --ff-only origin feature/open-access-token-gateway
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml up -d --build --force-recreate
+
+Проверьте запущенные контейнеры:
+
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml ps
+    docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Ports}}'
+
+В списке должны быть образы **chatgpt-mirror-web:open-lan** и **chatgpt-mirror-access-token-gateway:local**; dairoot/chatgpt-mirror:latest говорит о старом развёртывании. Проверка:
+
+    curl -fsS http://192.168.0.100:50002/api/whoami
+
+Ожидается JSON с полями authenticated, username и model. Если не так, на порту 50002 может работать старый gateway.
+
+Если **с правильным паролем** всё равно ошибка, восстановите администратора **текущего Django-контейнера**, оставив пароль из .env.lan неизменным:
+
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml exec -T web python backend/cli/create_init_user.py
+
+Обратите внимание: это повторно назначает пароль администратору из .env.lan. Это не меняет ChatGPT accessToken и не стирает базу.
+
+После восстановления откройте /admin/#/login в приватном окне браузера. Если в изменённой сборке остались китайские сообщения при неудачном входе, обновите ветку и перезапустите сборку: новая версия показывает локализованные ошибки.
+
+**Разница между аккаунтами:** вход в административную панель использует локального пользователя admin. Затем администратор добавляет ChatGPT accessToken и создаёт обычных локальных пользователей, назначая им пул доступных ChatGPT-аккаунтов. Только после этого обычный пользователь сможет выбрать ChatGPT-аккаунт и перейти в чат. Знать admin-пароль для всех клиентов не требуется.
+
 ## Что есть в gateway
 
 - Серверное подтверждение accessToken через закрытый веб-эндпоинт моделей ChatGPT.
