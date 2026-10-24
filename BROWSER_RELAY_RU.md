@@ -26,6 +26,12 @@ TLS и механизмов аутентификации. Все запросы 
 
 ```bash
 cd /Users/inh/Documents/lab/ChatGPT-Mirror
+
+# Пока открыта СТАРАЯ ветка, освободите порт 50002.
+if [ -f docker-compose.open-gateway.yml ]; then
+  docker compose --env-file .env.lan -f docker-compose.open-gateway.yml down
+fi
+
 git fetch origin
 git switch --track origin/feature/simple-chatgpt-browser-relay
 ```
@@ -33,15 +39,10 @@ git switch --track origin/feature/simple-chatgpt-browser-relay
 Если эта ветка уже существует локально, используйте `git switch feature/simple-chatgpt-browser-relay`
 и `git pull --ff-only origin feature/simple-chatgpt-browser-relay`.
 
-Освободите порт 50002, если там запущен прежний экспериментальный gateway:
-
-```bash
-docker compose --env-file .env.lan -f docker-compose.open-gateway.yml down
-```
-
-Если предыдущий запуск использовал `docker-compose.no-auth-test.yml`, у него то
-же имя Compose-проекта: команда выше останавливает его тоже. **Не** применяйте
-`down -v`, чтобы сохранить прежнюю базу.
+Команда в первом блоке останавливает прежний экспериментальный gateway,
+включая режим no-auth, **до** переключения на новую ветку (где этого
+Compose-файла уже нет). Не используйте `down -v`: база и секреты
+прежнего проекта должны сохраниться.
 
 Сгенерируйте собственный пароль, не меняя .env.lan:
 
@@ -107,9 +108,10 @@ docker compose --env-file .env.browser-relay \
 ```
 
 Это останавливает только удалённый браузер, не удаляя его профиль.
-Для прежнего gateway отдельно:
+Чтобы вернуть прежний gateway, сначала переключите ветку:
 
 ```bash
+git switch feature/open-access-token-gateway
 docker compose --env-file .env.lan \
   -f docker-compose.open-gateway.yml up -d
 ```
