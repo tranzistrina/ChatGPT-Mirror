@@ -1,0 +1,36 @@
+name: Verify admin frontend and backend
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: chatgpt-mirror-verify
+  cancel-in-progress: true
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020b
+        with:
+          node-version: '22'
+      - name: Build Vue admin frontend
+        run: cd frontend && npm ci --ignore-scripts && npm run build
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      DJANGO_ENV: PRODUCTION
+      DJANGO_SECRET_KEY: ci-test-only-temporary-not-used-in-production
+      DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,testserver
+      ADMIN_USERNAME: ci-admin
+      ADMIN_PASSWORD: ci-password-not-a-live-secret
+      CHATGPT_GATEWAY_URL: http://127.0.0.1:8787
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check Django and run security regression tests
+        run: |
+          python3 -m pip install -r backend/requirements.txt
+          cd backend
+          python3 -m py_compile ../scripts/patch_upstream.py
+          python3 manage.py check
+          python3 manage.py test app.accounts.tests_security

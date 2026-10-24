@@ -1,0 +1,66 @@
+x-defaults: &defaults
+  restart: always
+  env_file:
+    - .env
+  labels:
+    - "com.centurylinklabs.watchtower.enable=true"
+
+
+services:
+  web:
+    image: dairoot/chatgpt-mirror:latest
+    environment:
+      - CHATGPT_GATEWAY_URL=http://gateway:8787
+    ports:
+      - "50002:50002"
+    # depends_on:
+    #   - gateway
+    volumes:
+      - chatgpt_mirror_db:/app/backend/db/
+      - ./backend/logs:/app/backend/logs
+    <<: *defaults
+
+
+  gateway:
+    image: dairoot/chatgpt-gateway:latest
+    # ports:
+    #   - "8787:8787"
+    deploy:
+      replicas: 1 # 账号数量多时可+1
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    <<: *defaults
+
+
+  cf5s:
+    image: dairoot/cf5s:latest
+    depends_on:
+      - gateway
+    environment:
+      - CHATGPT_GATEWAY_URL=http://gateway:8787
+    <<: *defaults
+
+
+  redis:
+    image: redis:latest
+    restart: always
+    volumes:
+      - chatgpt_gateway_db:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    # ports:
+    #   - "127.0.0.1:6379:6379"
+
+
+  watchtower:
+    image: containrrr/watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: --cleanup --interval 3600 --label-enable
+
+
+volumes:
+  chatgpt_mirror_db:
+  chatgpt_gateway_db:
