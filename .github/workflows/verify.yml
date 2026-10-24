@@ -34,6 +34,9 @@ jobs:
           python3 -m py_compile ../scripts/patch_upstream.py
           python3 manage.py check
           python3 manage.py test app.accounts.tests_security
+          # Django test databases are destroyed after tests; prepare the
+          # persistent CI database before testing the startup admin script.
+          python3 manage.py migrate --noinput
           # Opt-in fixed-password test must work, and normal mode must restore
           # the strong configured admin password.
           MIRROR_UNSAFE_ADMIN_TEST_LOGIN=true ADMIN_USERNAME=admin python cli/create_init_user.py
