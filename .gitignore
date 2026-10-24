@@ -11,4 +11,5 @@ backend/logs/*
 /.env
 
 .env.native
+.env.docker
 .venv/
