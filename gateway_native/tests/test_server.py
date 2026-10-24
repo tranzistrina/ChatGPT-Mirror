@@ -47,6 +47,24 @@ class UnitTests(unittest.TestCase):
         self.assertEqual(http.call_args.args[0], "https://chatgpt.com/backend-api/models")
         self.assertFalse(http.call_args.kwargs["allow_redirects"])
 
+    def test_handoff_polling_recovers_completed_message(self):
+        s = server.Session("alice", "access-secret-that-is-long-enough", 9999999999)
+        res = StreamResponse([b'data: {"type":"stream_handoff","conversation_id":"conv-1"}', b'data: [DONE]'])
+        with mock.patch.object(server.requests, "post", return_value=res):
+            with mock.patch.object(server, "retrieve_completed_response", return_value=("Recovered", "mid2")) as poll:
+                out = list(server.stream_conversation(s, "hi", None, None))
+        self.assertEqual(out[-1][:3], ("Recovered", "conv-1", "mid2"))
+        self.assertTrue(poll.called)
+
+    def test_history_fallback_never_replays_old_answer(self):
+        fake = mock.Mock(status_code=200)
+        fake.json.return_value={"mapping":{"x":{"message":{
+            "id":"a1", "author":{"role":"assistant"}, "create_time":10,
+            "status":"finished_successfully", "content":{"parts":["old answer"]}}}}}
+        with mock.patch.object(server.requests, "get", return_value=fake):
+            with mock.patch.object(server.time, "sleep"):
+                self.assertIsNone(server.retrieve_completed_response("s" * 40, "conv-1", 1000))
+
     def test_session_expiry_and_revoke(self):
         s = server.State()
         key = s.create("alice", "access-secret-that-is-long-enough")
@@ -71,8 +89,9 @@ class UnitTests(unittest.TestCase):
         s = server.Session("alice", "access-secret-that-is-long-enough", 9999999999)
         res = StreamResponse([b'data: {"type":"stream_handoff","conversation_id":"conv-1"}', b'data: [DONE]'])
         with mock.patch.object(server.requests, "post", return_value=res):
-            with self.assertRaisesRegex(server.GatewayError, "handoff"):
-                list(server.stream_conversation(s, "hi", None, None))
+            with mock.patch.object(server, "retrieve_completed_response", return_value=None):
+                with self.assertRaisesRegex(server.GatewayError, "handoff"):
+                    list(server.stream_conversation(s, "hi", None, None))
 
 
 class HTTPTests(unittest.TestCase):
