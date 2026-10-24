@@ -9,7 +9,8 @@ set +a
 [[ -n "${DJANGO_SECRET_KEY:-}" && "$DJANGO_SECRET_KEY" != "REPLACE_WITH_RANDOM_SECRET" ]] || { echo "Set DJANGO_SECRET_KEY"; exit 1; }
 [[ -n "${ADMIN_PASSWORD:-}" && "$ADMIN_PASSWORD" != "REPLACE_WITH_LONG_RANDOM_PASSWORD" ]] || { echo "Set ADMIN_PASSWORD"; exit 1; }
 [[ -n "${CHATGPT_GATEWAY_URL:-}" && -n "${GATEWAY_UPSTREAM:-}" ]] || { echo "Set gateway URL variables"; exit 1; }
-[[ ${#GATEWAY_ACCESS_PASSWORD:-0} -ge 16 && "${GATEWAY_ACCESS_PASSWORD:-}" != "REPLACE_WITH_GATEWAY_PASSWORD" ]] || { echo "Set strong GATEWAY_ACCESS_PASSWORD"; exit 1; }
+gateway_password="${GATEWAY_ACCESS_PASSWORD:-}"
+[[ ${#gateway_password} -ge 16 && "$gateway_password" != "REPLACE_WITH_GATEWAY_PASSWORD" ]] || { echo "Set strong GATEWAY_ACCESS_PASSWORD"; exit 1; }
 
 (cd backend && ../.venv/bin/python manage.py migrate --noinput && ../.venv/bin/python cli/create_init_user.py)
 # Gateway binds to loopback only; no public port exposed.
