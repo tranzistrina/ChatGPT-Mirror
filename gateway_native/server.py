@@ -210,9 +210,9 @@ def stream_conversation(session: Session, message: str, conv: str | None, parent
             transferred += len(line)
             if transferred > MAX_STREAM:
                 raise GatewayError(502, "Upstream response exceeded the safety limit")
-            if not line.startswith(b"data: "):
+            if not line.startswith(b"data:"):
                 continue
-            payload = line[6:]
+            payload = line[5:].strip()
             if payload == b"[DONE]":
                 break
             try:
@@ -382,6 +382,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise GatewayError(400, "Invalid parent_message_id")
             if not self.state.slots.acquire(blocking=False):
                 raise GatewayError(429, "Server is busy")
+            self.headers_sent_sse = False
             try:
                 # Start upstream before sending SSE headers, so HTTP errors
                 # reach clients as proper status codes, not fake chat events.
@@ -395,11 +396,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_header("Cache-Control", "no-store")
                 self.send_header("X-Content-Type-Options", "nosniff")
                 self.end_headers()
+                self.headers_sent_sse = True
                 self.send_event("reply", first)
                 for event in gen:
                     self.send_event("reply", event)
                 self.send_event("done", {})
-            except GatewayError:
+            except GatewayError as exc:
+                if self.headers_sent_sse:
+                    self.send_event("error", {"error": str(exc)})
+                    return
                 raise
             except (BrokenPipeError, ConnectionResetError):
                 return
