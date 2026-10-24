@@ -38,7 +38,7 @@
               <translate-icon /> {{ locale === 'ru_RU' ? 'Русский' : 'English' }}
             </t-button>
             <t-dropdown-menu>
-              <t-dropdown-item v-for="lang in langList" :key="lang.value" @click="changeLang(lang.value as string)">
+              <t-dropdown-item v-for="lang in langList" :key="String(lang.value)" @click="changeLang(String(lang.value))">
                 {{ lang.content }}
               </t-dropdown-item>
             </t-dropdown-menu>
