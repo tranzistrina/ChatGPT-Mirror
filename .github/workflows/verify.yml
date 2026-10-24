@@ -53,3 +53,17 @@ jobs:
           PY
           docker compose --env-file .env.lan -f docker-compose.lan.yml config --quiet
           python3 -m py_compile scripts/setup_lan_env.py
+
+  open-access-token-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Offline protocol and security regression tests
+        run: |
+          python3 -m pip install requests==2.32.3
+          python3 -m unittest discover -s gateway_native/tests -v
+          python3 -m py_compile gateway_native/server.py
+          bash -n scripts/run_native_access_token.sh
+          python3 scripts/setup_lan_env.py
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml config --quiet
+          ! grep -Eq "image: dairoot/|watchtower|cf5s" docker-compose.open-gateway.yml
