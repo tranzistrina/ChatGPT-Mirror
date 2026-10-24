@@ -50,3 +50,55 @@ class AuthorizationRegressionTests(TestCase):
         client.credentials(HTTP_AUTHORIZATION="Token " + token.key)
         response = client.get("/0x/user/chatgpt-list")
         self.assertEqual(response.status_code, 401)
+
+
+class PasswordlessDiagnosticTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("admin", password="unrelated-secret")
+        self.user.is_staff = True
+        self.user.is_superuser = True
+        self.user.save()
+
+    def test_disabled_by_default_even_on_localhost(self):
+        with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "false", "ADMIN_USERNAME": "admin"}):
+            response = APIClient().post(
+                "/0x/user/no-auth-test-login", {},
+                format="json", HTTP_HOST="127.0.0.1:50002",
+            )
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Token.objects.filter(user=self.user).exists())
+
+    def test_enabled_only_on_localhost(self):
+        with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "true", "ADMIN_USERNAME": "admin"}):
+            remote = APIClient().post(
+                "/0x/user/no-auth-test-login", {},
+                format="json", HTTP_HOST="testserver",
+            )
+            self.assertEqual(remote.status_code, 403)
+            response = APIClient().post(
+                "/0x/user/no-auth-test-login", {},
+                format="json", HTTP_HOST="127.0.0.1:50002",
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["is_admin"])
+        self.assertTrue(response.json()["test_only"])
+        issued = response.json()["admin_token"]
+        self.assertTrue(Token.objects.filter(user=self.user, key=issued).exists())
+
+    def test_no_admin_role_denied(self):
+        self.user.is_staff = False
+        self.user.save()
+        with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "true", "ADMIN_USERNAME": "admin"}):
+            response = APIClient().post(
+                "/0x/user/no-auth-test-login", {},
+                format="json", HTTP_HOST="127.0.0.1:50002",
+            )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(Token.objects.filter(user=self.user).exists())
+
+    def test_config_only_advertises_bypass_on_localhost(self):
+        with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "true", "ADMIN_USERNAME": "admin"}):
+            local = APIClient().get("/0x/user/version-cfg", HTTP_HOST="127.0.0.1:50002")
+            remote = APIClient().get("/0x/user/version-cfg", HTTP_HOST="testserver")
+        self.assertTrue(local.json()["no_auth_test"])
+        self.assertFalse(remote.json()["no_auth_test"])
