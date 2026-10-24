@@ -13,6 +13,8 @@ class AuthorizationRegressionTests(TestCase):
             chatgpt_username="test@example.invalid",
             plan_type="plus",
             access_token="test-value",
+            created_time=0,
+            updated_time=0,
         )
         self.assertEqual(ChatgptAccount.get_by_gptcar_list([]).count(), 0)
 
