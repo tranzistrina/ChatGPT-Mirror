@@ -83,18 +83,28 @@ class PasswordlessDiagnosticTests(TestCase):
         self.assertTrue(response.json()["is_admin"])
         self.assertTrue(response.json()["test_only"])
         issued = response.json()["admin_token"]
-        self.assertTrue(Token.objects.filter(user=self.user, key=issued).exists())
+        probe = User.objects.get(username="__mirror_noauth_probe__")
+        self.assertFalse(probe.has_usable_password())
+        self.assertTrue(probe.is_staff)
+        self.assertTrue(Token.objects.filter(user=probe, key=issued).exists())
+        self.assertFalse(Token.objects.filter(user=self.user).exists())
+        self.assertTrue(self.user.check_password("unrelated-secret"))
+        client = APIClient()
+        client.credentials(HTTP_AUTHORIZATION="Token " + issued)
+        protected = client.get("/0x/user/chatgpt-list")
+        self.assertEqual(protected.status_code, 200)
 
-    def test_no_admin_role_denied(self):
-        self.user.is_staff = False
-        self.user.save()
+    def test_reserved_diagnostic_account_with_bad_role_denied(self):
+        reserved = User.objects.create_user("__mirror_noauth_probe__", password=None)
+        reserved.is_staff = False
+        reserved.save()
         with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "true", "ADMIN_USERNAME": "admin"}):
             response = APIClient().post(
                 "/0x/user/no-auth-test-login", {},
                 format="json", HTTP_HOST="127.0.0.1:50002",
             )
-        self.assertEqual(response.status_code, 400)
-        self.assertFalse(Token.objects.filter(user=self.user).exists())
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(Token.objects.filter(user=reserved).exists())
 
     def test_config_only_advertises_bypass_on_localhost(self):
         with patch.dict("os.environ", {"MIRROR_UNSAFE_NO_AUTH_TEST": "true", "ADMIN_USERNAME": "admin"}):
