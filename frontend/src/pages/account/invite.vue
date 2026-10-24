@@ -75,7 +75,7 @@ const idDelete = ref('');
 
 const columns: TableProps['columns'] = [
   { colKey: 'id', title: 'ID' },
-  { colKey: 'chatgpt_username', title: 'ChatGPT 账号', width: 200 },
+  { colKey: 'chatgpt_username', title: 'ChatGPT ' + t('mirror.k8d26_53f7'), width: 200 },
   { colKey: 'invite_count', title: t('mirror.k9080_8bf7_6570_91cf') },
   { colKey: 'used_count', title: t('mirror.k5df2_7528_6570_91cf') },
   { colKey: 'expires_at', title: t('mirror.k8fc7_671f_65f6_95f4'), width: 200 },
