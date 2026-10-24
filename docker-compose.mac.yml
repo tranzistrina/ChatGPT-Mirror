@@ -1,8 +1,5 @@
-# macOS local deployment.
-# Default: build the modified Django + Vue admin from THIS repository.
-# Optional --profile legacy-gateway runs opaque third-party images; use only
-# if you independently trust and have audited them.
-# Bind only to the host loopback interface. Not for Internet exposure.
+# Local-only macOS stack: all running application code is open-source.
+# docker compose --env-file .env.docker -f docker-compose.mac.yml up -d --build
 name: chatgpt-mirror-mac
 
 services:
@@ -11,52 +8,39 @@ services:
       context: .
       dockerfile: Dockerfile
     image: chatgpt-mirror-local:mac
-    env_file:
-      - .env.docker
     environment:
       DJANGO_ENV: PRODUCTION
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env.docker}
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env.docker}
+      ALLOW_REGISTER: ${ALLOW_REGISTER:-false}
+      SHOW_GITHUB: ${SHOW_GITHUB:-false}
+      TZ: ${TZ:-UTC}
       CHATGPT_GATEWAY_URL: http://gateway:8787
     ports:
       - "127.0.0.1:50002:50002"
+    depends_on:
+      - gateway
     volumes:
       - mirror_db:/app/backend/db
     restart: unless-stopped
 
-  # The upstream gateway is closed-source and unaudited. Not launched by
-  # default. Its images might be unavailable or incompatible with current
-  # ChatGPT or with your Mac's CPU/architecture.
   gateway:
-    profiles: ["legacy-gateway"]
-    image: dairoot/chatgpt-gateway:latest
-    platform: linux/amd64
-    env_file:
-      - .env.docker
+    build:
+      context: ./gateway
+      dockerfile: Dockerfile
+    image: chatgpt-mirror-openai-gateway:local
     environment:
-      REDIS_URL: redis://redis:6379/0
-    depends_on:
-      - redis
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      GATEWAY_ACCESS_PASSWORD: ${GATEWAY_ACCESS_PASSWORD:?Set GATEWAY_ACCESS_PASSWORD in .env.docker}
+      GATEWAY_ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-http://127.0.0.1:50002,http://localhost:50002}
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
-
-  cf5s:
-    profiles: ["legacy-gateway"]
-    image: dairoot/cf5s:latest
-    platform: linux/amd64
-    env_file:
-      - .env.docker
-    environment:
-      CHATGPT_GATEWAY_URL: http://gateway:8787
-    depends_on:
-      - gateway
-    restart: unless-stopped
-
-  redis:
-    profiles: ["legacy-gateway"]
-    image: redis:7.4-alpine
-    command: ["redis-server", "--appendonly", "yes"]
-    volumes:
-      - gateway_redis:/data
-    restart: unless-stopped
+    # Deliberately no ports: only the web container can reach the gateway.
 
 volumes:
   mirror_db:
-  gateway_redis:
