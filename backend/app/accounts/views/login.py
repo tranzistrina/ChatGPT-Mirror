@@ -39,9 +39,20 @@ class NoPasswordTestLogin(APIView):
         username = os.environ.get("ADMIN_USERNAME", "")
         if username != "admin":
             raise PermissionDenied("Temporary test login requires ADMIN_USERNAME=admin")
-        user = User.objects.filter(username=username, is_active=True, is_staff=True).first()
-        if not user:
-            raise ValidationError({"message": "Test admin not initialized"})
+        # A separate, disposable local account avoids exposing the real
+        # administrator's long-lived DRF token. On normal startup the
+        # create_init_user.py script revokes this account and its tokens.
+        test_name = "__mirror_noauth_probe__"
+        user, created = User.objects.get_or_create(
+            username=test_name,
+            defaults={"is_active": True, "is_staff": True,
+                      "is_superuser": True, "isolated_session": True},
+        )
+        if created:
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+        if user.has_usable_password() or not user.is_staff or not user.is_active:
+            raise PermissionDenied("Reserved diagnostic account is unavailable")
         token, _ = Token.objects.get_or_create(user=user)
         return Response({
             "admin_token": token.key,
