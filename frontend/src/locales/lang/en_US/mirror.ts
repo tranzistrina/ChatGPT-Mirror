@@ -115,4 +115,5 @@ export default {
   k591a_4e2a_54_6f_6b_65_6e_8bf7_6362_884c_8f93_5165: 'Use a new line for each token',
   k7cfb_7edf_5f02_5e38: 'System error',
   k670d_52a1_672a_6b63_5e38_542f_52a8: 'Service did not start'
+  k5f53_65e5_7528_91cf: 'Usage today',
 };
