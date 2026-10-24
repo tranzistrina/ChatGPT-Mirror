@@ -70,11 +70,12 @@
           </t-form>
         </t-loading>
         <div style="text-align: center; margin-top: 15px">
-          <div v-if="IsRegister">
+          <div v-if="!cfg.allow_register && !IsRegister">{{ locale === 'ru_RU' ? 'Доступ выдаёт администратор локальной сети.' : 'Ask your local network administrator for an account.' }}</div>
+          <div v-else-if="cfg.allow_register && IsRegister">
             {{ $t('mirror.k5df2_7ecf_62e5_6709_5e10_6237') }}<t-link :underline="false" href="/admin/#/login" style="color: #10a37f">{{ $t('mirror.k767b_5f55') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
           </div>
-          <div v-else>
+          <div v-else-if="cfg.allow_register">
             {{ $t('mirror.k6ca1_6709_5e10_6237') }}
             <t-link :underline="false" href="/admin/#/register" style="color: #10a37f">{{ $t('mirror.k6ce8_518c') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
@@ -109,7 +110,7 @@ const changeLanguage = (value: any) => {
 const loading = ref(false);
 const route = useRoute();
 const router = useRouter();
-const cfg = ref({ show_github: false, notice: '' });
+const cfg = ref({ show_github: false, notice: '', allow_register: false });
 const loginForm = reactive({
   username: '',
   password: '',
@@ -148,46 +149,34 @@ const loginType = computed(() => {
 });
 
 const onSubmit: FormProps['onSubmit'] = async ({ validateResult, firstError }) => {
-  if (validateResult === true) {
-    loading.value = true;
-    let url;
-
-    switch (loginType.value) {
-      case 'register':
-        url = '/0x/user/register';
-        break;
-      // case 'invite_register':
-      //   url = '/api/invite-register';
-      //   break;
-      default:
-        url = '/0x/user/login';
-    }
-    if (loginType.value === 'invite_register') {
-      const { hash } = window.location;
-      const paramsString = hash.split('?')[1];
-      const params = new URLSearchParams(paramsString);
-      loginForm.invite_token = params.get('invite_token');
-      loginForm.invite_id = params.get('id');
-    }
-
-    // console.log(loginForm)
+  if (validateResult !== true) {
+    console.error('Invalid login form', firstError);
+    return;
+  }
+  loading.value = true;
+  try {
+    const url = loginType.value === 'register' ? '/0x/user/register' : '/0x/user/login';
     const data = await userStore.login(url, loginForm);
-    if (data.admin_token && data.is_admin) {
-      router.push({ name: 'User' });
-    } else if (data.admin_token) {
-      return router.push({ name: 'LoginChatgpt' });
+    if (!data?.admin_token) return;
+    if (data.is_admin) {
+      await router.push({ name: 'User' });
+    } else {
+      await router.push({ name: 'LoginChatgpt' });
     }
-
+  } finally {
     loading.value = false;
-  } else {
-    console.error('表单引用未定义', firstError);
   }
 };
 
 const getVersionCfg = async () => {
-  const response = await fetch('/0x/user/version-cfg');
-  const data = await response.json();
-  Object.assign(cfg.value, { ...data });
+  try {
+    const response = await fetch('/0x/user/version-cfg', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    Object.assign(cfg.value, data);
+  } catch (_error) {
+    // Keep registration hidden if the backend cannot be reached.
+  }
 };
 
 const goFree = async () => {
