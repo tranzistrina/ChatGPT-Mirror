@@ -106,7 +106,6 @@
   </t-drawer>
 </template>
 <script setup lang="ts">
-import { t } from '@/locales';
 import { useClipboard } from '@vueuse/core';
 import type { PopupVisibleChangeContext } from 'tdesign-vue-next';
 import { MessagePlugin } from 'tdesign-vue-next';
