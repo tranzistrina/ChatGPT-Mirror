@@ -12,7 +12,7 @@ Based on [dairoot/ChatGPT-Mirror](https://github.com/dairoot/ChatGPT-Mirror) at 
 - Исправлены опасные настройки Django, IDOR при выдаче mirror token, ошибочный полный доступ к аккаунтам при пустом пуле, проверка просроченных токенов пользователя и ряд других дефектов.
 - **Запуск Python + Vue + Caddy без Docker** возможен при наличии отдельного совместимого gateway. В исходном репозитории нет исходников gateway, поэтому без него основной чат не запустится.
 
-**Инструкции:** [macOS: с Docker и без Docker](MACOS_SETUP_RU.md) · [Linux: без Docker](NATIVE_SETUP_RU.md) · [Аудит безопасности](SECURITY_REVIEW_RU.md)
+**Инструкции:** [Полный accessToken-стек для изолированной LAN (macOS)](LAN_SETUP_RU.md) · [macOS: с Docker и без Docker](MACOS_SETUP_RU.md) · [Linux: без Docker](NATIVE_SETUP_RU.md) · [Аудит безопасности](SECURITY_REVIEW_RU.md)
 
 **macOS и Docker:** запускайте `docker compose -f docker-compose.mac.yml up -d --build web` (после настройки `.env.docker`). В отличие от исходного `docker-compose.yml`, этот файл **собирает ваш изменённый исходный код**, открывает только localhost и не запускает старый закрытый gateway без явного параметра `--profile legacy-gateway`.
 

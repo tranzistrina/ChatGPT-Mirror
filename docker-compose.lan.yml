@@ -1,0 +1,72 @@
+# Local network deployment using ORIGINAL accessToken-based gateway.
+# The gateway/cf5s images are third-party opaque binaries: unaudited and
+# potentially incompatible with current ChatGPT. Only for trusted test LAN.
+# Start: docker compose --env-file .env.lan -f docker-compose.lan.yml up -d --build
+name: chatgpt-mirror-lan
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chatgpt-mirror-fork:lan
+    ports:
+      # Bind exclusively to the explicitly selected LAN adapter address.
+      - "${LAN_BIND_IP:?Set LAN_BIND_IP to your Mac LAN IPv4}:${LAN_PORT:-50002}:50002"
+    environment:
+      DJANGO_ENV: PRODUCTION
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?Generate DJANGO_SECRET_KEY}"
+      DJANGO_ALLOWED_HOSTS: "${LAN_ALLOWED_HOSTS:?Configure LAN_ALLOWED_HOSTS}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Generate ADMIN_PASSWORD}"
+      CHATGPT_GATEWAY_URL: http://gateway:8787
+      ALLOW_REGISTER: "false"
+      SHOW_GITHUB: "false"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      - gateway
+    volumes:
+      - mirror_lan_sqlite:/app/backend/db
+    restart: unless-stopped
+
+  gateway:
+    # NOT OPEN SOURCE. Do not use with important accounts until audited.
+    image: dairoot/chatgpt-gateway:latest
+    # Old upstream image is most likely amd64; enables Rosetta/QEMU on Apple Silicon.
+    # If the publisher provides a native arm64 image, remove this line.
+    platform: linux/amd64
+    environment:
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Generate ADMIN_PASSWORD}"
+      REDIS_URL: redis://redis:6379/0
+      ENABLE_MIRROR_API: "false"
+      WEB_HATD: "false"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    # No host ports. Requests go only through web/Caddy.
+
+  cf5s:
+    # NOT OPEN SOURCE. Originally required for upstream web-protection flows.
+    image: dairoot/cf5s:latest
+    platform: linux/amd64
+    environment:
+      CHATGPT_GATEWAY_URL: http://gateway:8787
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?Generate ADMIN_PASSWORD}"
+      TZ: "${TZ:-UTC}"
+    depends_on:
+      - gateway
+    restart: unless-stopped
+    # No host ports.
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - mirror_lan_redis:/data
+    restart: unless-stopped
+    # No host ports.
+
+volumes:
+  mirror_lan_sqlite:
+  mirror_lan_redis:
