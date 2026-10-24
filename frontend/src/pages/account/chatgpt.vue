@@ -69,7 +69,7 @@
       </t-table>
 
       <!-- 录入 Token dialog -->
-      <t-dialog v-model:visible="showDialog" header="录入 ChatGPT Token" width="50%" :on-confirm="handleAdd">
+      <t-dialog v-model:visible="showDialog" :header="$t('mirror.k5f55_5165') + ' ChatGPT Token'" width="50%" :on-confirm="handleAdd">
         <t-form v-loading="loading" :data="newChat" :label-width="0">
           <t-form-item label="Token">
             <div style="display: flex; flex-direction: column; width: 100%">
@@ -78,21 +78,21 @@
                 :autosize="{ minRows: 5, maxRows: 5 }"
                 autofocus
                 size="large"
-                placeholder="请输入 Access Token 或 Session Token 或 Refresh Token。一行一串Token，多个Token请换行输入。"
+                :placeholder="$t('mirror.k8bf7_8f93_5165_20_41_63_63_65_73_73_20_54_6f_6b_65_6e_20_6216_20_53_65_73_73_69_6f_6e_20_54_6f_6b_65_6e_20_6216_20_52_65_66_72_65_73_68_20_54_6f_6b_65_6e_3002_4e00_884c_4e00_4e32')"
               ></t-textarea>
               <span style="font-size: 12px; color: #888">
                 <t-link target="_blank" theme="primary" size="small" href="https://chatgpt.com/api/auth/session">
                   Access Token</t-link
-                >：有效期10天
+                >: {{ $t('mirror.k6709_6548_671f_31_30_5929') }}
               </span>
               <span style="font-size: 12px; color: #888">
                 <t-link target="_blank" theme="primary" size="small" :href="ChatgptTokenTutorialUrl"
                   >Session Token</t-link
-                >：有效期30天
+                >: {{ $t('mirror.k6709_6548_671f_33_30_5929') }}
                 <!-- or
                 <t-link target="_blank" theme="primary" size="small" :href="ChatgptTokenAuthUrl">{{ $t('mirror.k81ea_52a8_83b7_53d6') }}</t-link> -->
               </span>
-              <span style="font-size: 12px; color: #888"> Refresh Token：有效期永久 </span>
+              <span style="font-size: 12px; color: #888"> Refresh Token: {{ $t('mirror.k6709_6548_671f_6c38_4e45') }} </span>
             </div>
           </t-form-item>
         </t-form>
@@ -156,11 +156,11 @@ const rehandlePageChange = (curr: any) => {
 const columns: TableProps['columns'] = [
   { colKey: 'row-select', type: 'multiple' },
   { colKey: 'id', title: 'ID', width: 50 },
-  { colKey: 'chatgpt_username', title: 'ChatGPT 账号', width: 220, fixed: 'left' },
+  { colKey: 'chatgpt_username', title: 'ChatGPT ' + t('mirror.k8d26_53f7'), width: 220, fixed: 'left' },
   { colKey: 'auth_status', title: t('mirror.k72b6_6001'), width: 100, fixed: 'left' },
   { colKey: 'plan_type', title: t('mirror.k7c7b_578b'), width: 100 },
   // { colKey: 'use_count', title: '近期用量', width: 350 },
-  { colKey: 'access_token_exp', title: 'Access Token 过期时间', width: 200 },
+  { colKey: 'access_token_exp', title: 'Access Token ' + t('mirror.k8fc7_671f_65f6_95f4'), width: 200 },
   { colKey: 'created_time', title: t('mirror.k521b_5efa_65f6_95f4'), width: 200 },
   // { colKey: 'updated_at', title: '最近更新时间', width: 200 },
   { colKey: 'remark', title: t('mirror.k5907_6ce8') },
@@ -253,7 +253,7 @@ const handleDelete = async () => {
 
 const handleAdd = () => {
   if (newChat.value.chatgpt_token.trim() === '') {
-    MessagePlugin.error('Token 不能为空');
+    MessagePlugin.error('Token ' + t('mirror.k4e0d_80fd_4e3a_7a7a'));
   } else {
     addChatToken();
   }
