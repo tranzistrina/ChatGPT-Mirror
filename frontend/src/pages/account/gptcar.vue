@@ -27,7 +27,7 @@
               </div>
             </template>
 
-            <t-link variant="outline"> ChatGPT 账号 {{ row.gpt_account_name_list.length }} 个 </t-link>
+            <t-link variant="outline"> ChatGPT {{ $t('mirror.k8d26_53f7') }} {{ row.gpt_account_name_list.length }} {{ $t('mirror.k4e2a') }} </t-link>
           </t-popup>
           <!-- <t-space style="display: flex; flex-wrap: wrap; max-width: 100%; overflow: hidden">
             <t-tag v-for="item in row.gpt_account_name_list" :key="item" max-width="80"> {{ item }} </t-tag>
@@ -60,7 +60,7 @@
             <t-input v-model="newGptCar.car_name" :disabled="actionType == 'edit'" style="width: 240px"></t-input>
           </t-form-item>
 
-          <t-form-item label="选择 ChatGPT" name="gptcar_list">
+          <t-form-item :label="$t('mirror.k9009_62e9') + ' ChatGPT'" name="gptcar_list">
             <t-space style="width: 100%">
               <t-select
                 v-model="newGptCar.gpt_account_list"
@@ -125,7 +125,7 @@ const GptCarUri = '/0x/chatgpt/car';
 const tableData = ref<TableData[]>([]);
 const columns: TableProps['columns'] = [
   { colKey: 'car_name', title: t('mirror.k53f7_6c60_540d_79f0'), width: 220 },
-  { colKey: 'gpt_account_name_list', title: 'gpt 账号', width: 200 },
+  { colKey: 'gpt_account_name_list', title: 'gpt ' + t('mirror.k8d26_53f7'), width: 200 },
   { colKey: 'created_time', title: t('mirror.k521b_5efa_65f6_95f4'), width: 200 },
 
   { colKey: 'remark', title: t('mirror.k5907_6ce8'), width: 220 },
