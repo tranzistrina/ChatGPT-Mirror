@@ -292,7 +292,7 @@ def translate_vue(source: str) -> str:
         return "t('mirror." + key_for(value) + "')"
 
     code = re.sub(r'(?P<quote>["\x27])(?P<value>[^"\x27\n]+)(?P=quote)', js_repl, code)
-    if changed_code:
+    if changed_code and "from '@/locales'" not in code:
         code = code.replace("<script setup lang=\"ts\">",
                             "<script setup lang=\"ts\">\nimport { t } from '@/locales';", 1)
     return template + code
@@ -328,7 +328,7 @@ def localization() -> None:
               <translate-icon /> {{ locale === 'ru_RU' ? 'Русский' : 'English' }}
             </t-button>
             <t-dropdown-menu>
-              <t-dropdown-item v-for="lang in langList" :key="lang.value" @click="changeLang(lang.value as string)">
+              <t-dropdown-item v-for="lang in langList" :key="String(lang.value)" @click="changeLang(String(lang.value))">
                 {{ lang.content }}
               </t-dropdown-item>
             </t-dropdown-menu>
