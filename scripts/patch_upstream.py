@@ -30,6 +30,8 @@ def append_file(path: str, data: str) -> None:
 
 
 def security() -> None:
+    edit("backend/requirements.txt", "Django==5.1.1", "Django==5.2.18")
+    edit("backend/requirements.txt", "djangorestframework==3.15.2", "djangorestframework==3.16.1")
     settings = "backend/app/settings.py"
     edit(settings,
          'SECRET_KEY = "django-insecure-gw^4gif(3_2ijvc)l)ty0s-1e#2chgt@li=!+cnk#x&01nc*a)"',
