@@ -34,3 +34,15 @@ jobs:
           python3 -m py_compile ../scripts/patch_upstream.py
           python3 manage.py check
           python3 manage.py test app.accounts.tests_security
+
+  gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Test first-party gateway, native launch shell and Compose definition
+        run: |
+          python3 -m py_compile gateway/server.py
+          python3 -m unittest discover -s gateway/tests -v
+          bash -n scripts/run_native.sh
+          cp .env.native.example .env.docker
+          docker compose --env-file .env.docker -f docker-compose.mac.yml config --quiet
