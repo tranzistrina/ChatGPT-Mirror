@@ -14,6 +14,11 @@ if __name__ == "__main__":
     from app.accounts.models import User
     from app.settings import FREE_ACCOUNT_USERNAME, ADMIN_USERNAME, ADMIN_PASSWORD
 
+    # Always revoke the disposable diagnostic admin and its DRF token on a
+    # normal restart. The normal LAN service must never inherit test access.
+    if os.environ.get("MIRROR_UNSAFE_NO_AUTH_TEST") != "true":
+        User.objects.filter(username="__mirror_noauth_probe__").delete()
+
     test_admin = os.environ.get("MIRROR_UNSAFE_ADMIN_TEST_LOGIN") == "true"
     if test_admin and ADMIN_USERNAME != "admin":
         raise RuntimeError("Test login requires ADMIN_USERNAME=admin")
