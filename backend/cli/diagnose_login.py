@@ -24,12 +24,53 @@ from django.utils import timezone
 from app.accounts.models import User
 
 
+def check_proxy(username: str, password: str, host: str) -> int:
+    """Test the real HTTP route Caddy -> Django, suppressing bearer tokens."""
+    from urllib import request as urllib_request
+    from urllib.error import HTTPError, URLError
+
+    data = json.dumps({"username": username, "password": password}).encode()
+    req = urllib_request.Request(
+        "http://127.0.0.1:50002/0x/user/login",
+        data=data,
+        headers={
+            "Host": f"{host}:50002",
+            "Content-Type": "application/json",
+            "User-Agent": "MirrorAdminDiagnostic/1",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=8) as response:
+            status = response.status
+            body = response.read(32768)
+    except HTTPError as exc:
+        print("Real Caddy login HTTP status:", exc.code)
+        print("RESULT: PROXY_LOGIN_FAILED. Check Caddyfile and logs.")
+        return 10
+    except (URLError, OSError) as exc:
+        print("RESULT: CADDY_UNREACHABLE.", type(exc).__name__)
+        return 11
+    try:
+        payload = json.loads(body)
+    except ValueError:
+        payload = {}
+    print("Real Caddy login HTTP status:", status)
+    if status == 200 and isinstance(payload, dict) and payload.get("is_admin") and payload.get("admin_token"):
+        print("RESULT: PROXY_LOGIN_OK. Browser login should work; inspect UI state or cache if not.")
+        return 0
+    print("RESULT: PROXY_LOGIN_INVALID_RESPONSE (auth details suppressed).")
+    return 12
+
+
 def diagnose() -> int:
     username = os.environ.get("ADMIN_USERNAME", "")
-    password = os.environ.get("ADMIN_PASSWORD", "")
+    insecure_test = os.environ.get("MIRROR_UNSAFE_ADMIN_TEST_LOGIN") == "true"
+    password = "12345" if insecure_test else os.environ.get("ADMIN_PASSWORD", "")
     print("=== Mirror administrator diagnostic (secrets hidden) ===")
     print("Configured username:", username or "(missing)")
-    print("Environment password set:", "YES" if len(password) >= 16 else "NO or too short")
+    print("Temporary fixed admin / 12345 mode:", "ON" if insecure_test else "OFF")
+    print("Expected local password configured:", "YES" if password else "NO")
     print("Database:", Path(settings.DATABASES["default"]["NAME"]).name)
     print("Production mode:", "YES" if settings.DEBUG is False else "NO")
     if not username or not password:
@@ -84,8 +125,8 @@ def diagnose() -> int:
         print("Django returned admin token: YES (token value hidden)")
         print("Django recognized admin:","YES" if payload.get("is_admin") else "NO")
         if payload.get("is_admin"):
-            print("RESULT: DJANGO_LOGIN_OK. If browser still fails, check Caddy proxy and browser console.")
-            return 0
+            print("RESULT: DJANGO_LOGIN_OK. Checking the real Caddy reverse proxy...")
+            return check_proxy(username, password, host)
     if isinstance(payload, dict):
         print("Error fields:", ", ".join(sorted(str(k) for k in payload)) or "(none)")
     print("RESULT: Django login failed in-process; inspect 'docker compose logs web'.")
