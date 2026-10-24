@@ -33,11 +33,11 @@
         <h2 class="login-title">
           <component :is="LogoOpenai" style="margin-bottom: 50px"></component>
 
-          <div v-if="cfg.no_auth_test">{{ locale === 'ru_RU' ? 'Тестовый вход без пароля' : 'Passwordless diagnostic mode' }}</div>
+          <div v-if="showNoAuth">{{ locale === 'ru_RU' ? 'Тестовый вход без пароля' : 'Passwordless diagnostic mode' }}</div>
           <div v-else-if="IsRegister">{{ $t('mirror.k521b_5efa_5e10_6237') }}</div>
           <div v-else>{{ $t('mirror.k6b22_8fce_56de_6765') }}</div>
         </h2>
-        <div v-if="cfg.no_auth_test" class="test-auto-login" role="status">
+        <div v-if="showNoAuth" class="test-auto-login" role="status">
           <p>{{ locale === 'ru_RU' ? 'Проверка панели: вход без логина и пароля.' : 'Testing admin panel without a username or password.' }}</p>
           <p v-if="noAuthError">{{ locale === 'ru_RU' ? 'Автоматический вход не удался. Откройте консоль браузера.' : 'Automatic sign-in failed. Check browser developer tools.' }}</p>
           <p v-else>{{ locale === 'ru_RU' ? 'Выполняется автоматический вход…' : 'Signing in automatically…' }}</p>
@@ -119,6 +119,9 @@ const route = useRoute();
 const router = useRouter();
 const cfg = ref({ show_github: false, notice: '', allow_register: false, no_auth_test: false });
 const noAuthError = ref(false);
+// Keep the temporary admin bypass available, but allow normal local users
+// to sign in through #/login?user=1 even while diagnostic mode is enabled.
+const showNoAuth = computed(() => cfg.value.no_auth_test && route.query.user !== '1');
 const loginForm = reactive({
   username: '',
   password: '',
@@ -129,7 +132,7 @@ const loginForm = reactive({
 
 onMounted(async () => {
   await getVersionCfg();
-  if (cfg.value.no_auth_test) await noAuthSignIn();
+  if (showNoAuth.value) await noAuthSignIn();
 });
 
 const noAuthSignIn = async () => {
