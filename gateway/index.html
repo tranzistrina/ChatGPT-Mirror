@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mirror Chat • OpenAI API</title>
+  <link rel="stylesheet" href="/style.css">
+  <script defer src="/app.js"></script>
+</head>
+<body>
+  <main class="shell">
+    <header><div><h1>Mirror Chat</h1><span id="model"></span></div><nav><button id="lang" type="button">English</button> <a href="/admin/" id="admin-link">Админ-панель</a> <button id="logout" type="button" hidden>Выйти</button></nav></header>
+    <section id="login" class="login">
+      <h2 id="login-title">Вход в чат</h2>
+      <p id="intro">Независимый чат на официальном OpenAI API. Не использует закрытый gateway.</p>
+      <form id="login-form">
+        <label for="password" id="password-label">Пароль чата</label>
+        <input type="password" id="password" autocomplete="current-password" required minlength="1">
+        <button type="submit" id="login-button">Войти</button>
+      </form>
+    </section>
+    <section id="chat" hidden>
+      <div id="messages" class="messages" role="log" aria-live="polite" aria-label="Messages">
+        <p class="hint" id="empty-message">Задай вопрос. Переписка находится только в текущей вкладке и исчезнет при обновлении.</p>
+      </div>
+      <form id="chat-form" class="chat-form">
+        <label for="prompt" id="prompt-label">Сообщение</label>
+        <textarea id="prompt" rows="3" maxlength="6000" placeholder="Напиши сообщение..." required></textarea>
+        <div class="controls"><span id="status" role="status"></span><button type="button" id="clear">Новый чат</button><button type="submit" id="send">Отправить</button></div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
