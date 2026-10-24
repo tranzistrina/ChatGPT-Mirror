@@ -14,19 +14,32 @@ if __name__ == "__main__":
     from app.accounts.models import User
     from app.settings import FREE_ACCOUNT_USERNAME, ADMIN_USERNAME, ADMIN_PASSWORD
 
+    test_admin = os.environ.get("MIRROR_UNSAFE_ADMIN_TEST_LOGIN") == "true"
+    if test_admin and ADMIN_USERNAME != "admin":
+        raise RuntimeError("Test login requires ADMIN_USERNAME=admin")
     if not ADMIN_USERNAME:
-        raise Exception("未设置 超级管理员账密")
+        raise RuntimeError("ADMIN_USERNAME must be configured")
 
+    # Fixed admin / 12345 is ONLY enabled by the explicit test-only
+    # Compose overlay. Keep the normal strong gateway ADMIN_PASSWORD intact.
+    local_password = "12345" if test_admin else ADMIN_PASSWORD
+    if not local_password:
+        raise RuntimeError("ADMIN_PASSWORD must be configured")
 
     defaults = {"remark": "超级管理员", "isolated_session": False}
     user, created = User.objects.get_or_create(username=ADMIN_USERNAME, defaults=defaults)
-    user.set_password(ADMIN_PASSWORD)
+    user.set_password(local_password)
+    # Ensure a previous expired local-admin account cannot block test login.
+    if test_admin:
+        user.expired_date = None
     user.is_staff = True
     user.is_active = True
     user.is_superuser = True
 
     user.save()
     print("Superuser created.")
+    if test_admin:
+        print("INSECURE TEST LOGIN ENABLED: admin / 12345 (LAN exposed; disable after debugging)")
 
     defaults = {
         "remark": "用于免费体验",
