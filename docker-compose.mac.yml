@@ -1,0 +1,62 @@
+# macOS local deployment.
+# Default: build the modified Django + Vue admin from THIS repository.
+# Optional --profile legacy-gateway runs opaque third-party images; use only
+# if you independently trust and have audited them.
+# Bind only to the host loopback interface. Not for Internet exposure.
+name: chatgpt-mirror-mac
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chatgpt-mirror-local:mac
+    env_file:
+      - .env.docker
+    environment:
+      DJANGO_ENV: PRODUCTION
+      CHATGPT_GATEWAY_URL: http://gateway:8787
+    ports:
+      - "127.0.0.1:50002:50002"
+    volumes:
+      - mirror_db:/app/backend/db
+    restart: unless-stopped
+
+  # The upstream gateway is closed-source and unaudited. Not launched by
+  # default. Its images might be unavailable or incompatible with current
+  # ChatGPT or with your Mac's CPU/architecture.
+  gateway:
+    profiles: ["legacy-gateway"]
+    image: dairoot/chatgpt-gateway:latest
+    platform: linux/amd64
+    env_file:
+      - .env.docker
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+    restart: unless-stopped
+
+  cf5s:
+    profiles: ["legacy-gateway"]
+    image: dairoot/cf5s:latest
+    platform: linux/amd64
+    env_file:
+      - .env.docker
+    environment:
+      CHATGPT_GATEWAY_URL: http://gateway:8787
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  redis:
+    profiles: ["legacy-gateway"]
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - gateway_redis:/data
+    restart: unless-stopped
+
+volumes:
+  mirror_db:
+  gateway_redis:
