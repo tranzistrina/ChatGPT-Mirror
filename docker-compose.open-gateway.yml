@@ -10,16 +10,16 @@ services:
     image: chatgpt-mirror-web:open-lan
     environment:
       DJANGO_ENV: PRODUCTION
-      DJANGO_SECRET_KEY: \${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env.lan}
-      DJANGO_ALLOWED_HOSTS: \${LAN_ALLOWED_HOSTS:?Set LAN_ALLOWED_HOSTS in .env.lan}
-      ADMIN_USERNAME: \${ADMIN_USERNAME:-admin}
-      ADMIN_PASSWORD: \${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env.lan}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?Set DJANGO_SECRET_KEY in .env.lan}
+      DJANGO_ALLOWED_HOSTS: ${LAN_ALLOWED_HOSTS:?Set LAN_ALLOWED_HOSTS in .env.lan}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env.lan}
       CHATGPT_GATEWAY_URL: http://gateway:8787
       ALLOW_REGISTER: "false"
       SHOW_GITHUB: "false"
-      TZ: \${TZ:-UTC}
+      TZ: ${TZ:-UTC}
     ports:
-      - "\${LAN_BIND_IP:?Set LAN_BIND_IP in .env.lan}:\${LAN_PORT:-50002}:50002"
+      - "${LAN_BIND_IP:?Set LAN_BIND_IP in .env.lan}:${LAN_PORT:-50002}:50002"
     volumes:
       - open_gateway_db:/app/backend/db
     depends_on:
@@ -31,10 +31,10 @@ services:
       dockerfile: Dockerfile
     image: chatgpt-mirror-access-token-gateway:local
     environment:
-      ADMIN_PASSWORD: \${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env.lan}
-      LAN_BIND_IP: \${LAN_BIND_IP:?Set LAN_BIND_IP in .env.lan}
-      LAN_PORT: \${LAN_PORT:-50002}
-      CHATGPT_WEB_MODEL: \${CHATGPT_WEB_MODEL:-auto}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?Set ADMIN_PASSWORD in .env.lan}
+      LAN_BIND_IP: ${LAN_BIND_IP:?Set LAN_BIND_IP in .env.lan}
+      LAN_PORT: ${LAN_PORT:-50002}
+      CHATGPT_WEB_MODEL: ${CHATGPT_WEB_MODEL:-auto}
     read_only: true
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
