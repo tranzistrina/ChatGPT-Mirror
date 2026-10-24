@@ -31,5 +31,6 @@ jobs:
         run: |
           python3 -m pip install -r backend/requirements.txt
           cd backend
+          python3 -m py_compile ../scripts/patch_upstream.py
           python3 manage.py check
           python3 manage.py test app.accounts.tests_security
