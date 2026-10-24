@@ -1,4 +1,4 @@
-:50002 {
+http://127.0.0.1:50002 {
     @admin path /admin
     redir @admin /admin/ 308
 
