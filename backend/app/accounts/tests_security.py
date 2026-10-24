@@ -144,7 +144,7 @@ class OrdinaryUserFlowTests(TestCase):
         }, format="json")
         self.assertEqual(result.status_code, 200, result.content)
 
-        client = APIClient()
+        client = APIClient(HTTP_USER_AGENT="MirrorIntegrationTest/1")
         login = client.post("/0x/user/login", {
             "username": "demo_user", "password": "demo_user_password"
         }, format="json")
