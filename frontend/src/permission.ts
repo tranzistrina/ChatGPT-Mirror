@@ -1,79 +1,44 @@
-import 'nprogress/nprogress.css'; // progress bar style
+import 'nprogress/nprogress.css';
 
-import NProgress from 'nprogress'; // progress bar
+import NProgress from 'nprogress';
 import { MessagePlugin } from 'tdesign-vue-next';
-import { RouteRecordRaw } from 'vue-router';
 
 import router from '@/router';
 import { getPermissionStore, useUserStore } from '@/store';
-import { PAGE_NOT_FOUND_ROUTE } from '@/utils/route/constant';
 
 NProgress.configure({ showSpinner: false });
 
-router.beforeEach(async (to, from, next) => {
+// All routes in this fork are registered statically in router/index.ts.
+// The upstream guard repeatedly tried to install an empty asyncRoutes list,
+// which could send a successful login into an infinite router redirect.
+router.beforeEach(async (to) => {
   NProgress.start();
 
   const permissionStore = getPermissionStore();
-  const { whiteListRouters } = permissionStore;
-
   const userStore = useUserStore();
-  console.log('userStore.token', userStore.is_admin, userStore.token);
-  if (userStore.token) {
-    if (to.path === '/login') {
-      next();
-      return;
-    }
-    try {
-      // await userStore.getUserInfo();
+  const publicRoutes = permissionStore.whiteListRouters;
 
-      const { asyncRoutes } = permissionStore;
+  // Sign-in must remain reachable, regardless of persisted account state.
+  if (to.path === '/login') return true;
 
-      if (asyncRoutes && asyncRoutes.length === 0) {
-        const routeList = await permissionStore.buildAsyncRoutes();
-        routeList.forEach((item: RouteRecordRaw) => {
-          router.addRoute(item);
-        });
+  if (!userStore.token) {
+    if (publicRoutes.includes(to.path)) return true;
+    return {
+      path: '/login',
+      query: { redirect: encodeURIComponent(to.fullPath) },
+    };
+  }
 
-        if (to.name === PAGE_NOT_FOUND_ROUTE.name) {
-          // 动态添加路由后，此处应当重定向到fullPath，否则会加载404页面内容
-          next({ path: to.fullPath, replace: true, query: to.query });
-        } else {
-          let redirect;
-          if (to.path !== '/login-chatgpt') {
-            redirect = from.query?.redirect;
-          }
-          redirect = decodeURIComponent((redirect || to.path) as string);
-          // console.log('redirect', redirect);
-          next(to.path === redirect ? { ...to, replace: true } : { path: redirect, query: to.query });
-          return;
-        }
-      }
-      if (router.hasRoute(to.name)) {
-        next();
-      } else {
-        next(`/`);
-      }
-    } catch (error) {
-      MessagePlugin.error(error.message);
-      next({
-        path: '/login',
-        query: { redirect: encodeURIComponent(to.fullPath) },
-      });
-      NProgress.done();
+  try {
+    // Generate the menu once when needed, but never redirect back to the same
+    // route just because no dynamic routes are available.
+    if (permissionStore.routers.length === 0) {
+      await permissionStore.initRoutes();
     }
-  } else {
-    /* white list router */
-    console.log(to.path, whiteListRouters, whiteListRouters.indexOf(to.path));
-    if (whiteListRouters.indexOf(to.path) !== -1) {
-      console.log('next ok');
-      next();
-    } else {
-      next({
-        path: '/login',
-        query: { redirect: encodeURIComponent(to.fullPath) },
-      });
-    }
-    NProgress.done();
+    return true;
+  } catch (_error) {
+    MessagePlugin.error('Failed to initialize local navigation.');
+    return { path: '/login' };
   }
 });
 
@@ -81,7 +46,6 @@ router.afterEach((to) => {
   if (to.path === '/login') {
     const userStore = useUserStore();
     const permissionStore = getPermissionStore();
-
     userStore.logout();
     permissionStore.restoreRoutes();
   }
