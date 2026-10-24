@@ -112,3 +112,58 @@ class PasswordlessDiagnosticTests(TestCase):
             remote = APIClient().get("/0x/user/version-cfg", HTTP_HOST="testserver")
         self.assertTrue(local.json()["no_auth_test"])
         self.assertFalse(remote.json()["no_auth_test"])
+
+
+class OrdinaryUserFlowTests(TestCase):
+    def test_admin_can_assign_pool_and_regular_user_can_select_chatgpt(self):
+        from app.chatgpt.models import ChatgptCar
+
+        admin = User.objects.create_superuser("admin", password="temporary-test-only")
+        chatgpt = ChatgptAccount.objects.create(
+            chatgpt_username="assigned@example.invalid",
+            plan_type="plus",
+            access_token="synthetic-test-token-not-sent-to-OpenAI",
+            created_time=0, updated_time=0,
+        )
+        pool = ChatgptCar.objects.create(
+            car_name="local_test_pool",
+            gpt_account_list=[chatgpt.pk],
+            created_time=0, updated_time=0,
+        )
+        admin_client = APIClient()
+        admin_client.force_authenticate(user=admin)
+        result = admin_client.post("/0x/user/", {
+            "username": "demo_user",
+            "password": "demo_user_password",
+            "is_active": True,
+            "gptcar_list": [pool.pk],
+            "model_limit": [],
+            "isolated_session": True,
+            "remark": "test only",
+            "expired_date": None,
+        }, format="json")
+        self.assertEqual(result.status_code, 200, result.content)
+
+        client = APIClient()
+        login = client.post("/0x/user/login", {
+            "username": "demo_user", "password": "demo_user_password"
+        }, format="json")
+        self.assertEqual(login.status_code, 200, login.content)
+        self.assertFalse(login.json().get("is_admin", False))
+        client.credentials(HTTP_AUTHORIZATION="Token " + login.json()["admin_token"])
+
+        with patch("app.accounts.views.req_gateway", return_value={}):
+            available = client.get("/0x/user/chatgpt-list")
+        self.assertEqual(available.status_code, 200, available.content)
+        self.assertEqual(len(available.json()["results"]), 1)
+        self.assertEqual(available.json()["results"][0]["id"], chatgpt.pk)
+
+        with patch("app.chatgpt.views.chatgpt.req_gateway",
+                   return_value={"user-gateway-token": "diagnostic-placeholder"}):
+            selected = client.post("/0x/chatgpt/login", {
+                "chatgpt_id": chatgpt.pk
+            }, format="json")
+        self.assertEqual(selected.status_code, 200, selected.content)
+        self.assertEqual(
+            selected.json()["user-gateway-token"], "diagnostic-placeholder"
+        )
