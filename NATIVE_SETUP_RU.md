@@ -98,15 +98,7 @@ ssh -L 50002:127.0.0.1:50002 USER@SERVER_IP
 
 Если позже будете запускать и проверенный gateway, установите `cron` и настройте задания из Django:
 
-```bash
-sudo apt install -y cron
-sudo systemctl enable --now cron
-cd ~/ChatGPT-Mirror/backend
-../.venv/bin/python manage.py crontab add
-../.venv/bin/python manage.py crontab show
-```
-
-Запускайте эти команды с теми же переменными окружения, что использует `run_native.sh`; без них настройки Django не загрузятся. Регистрация расписания не нужна для первого знакомства с админ-панелью.
+Для обычной установки **этот шаг не нужен**. Если позже будет подключён проверенный gateway, потребуется отдельный cron/systemd timer, запускающий `app.cron.check_access_token` и `app.cron.update_access_token` каждые пять минут **с переменными из `.env.native`**. Простая команда `manage.py crontab add` без передачи секретов в окружение для этой нативной схемы недостаточна.
 
 ## Возможные ошибки
 
