@@ -13,7 +13,7 @@ const InitUserInfo: UserInfo = {
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: 'main_token', // 默认token不走权限
+    token: '', // Require a real Django login token; never treat placeholder as authenticated
     is_admin: false,
     userInfo: { ...InitUserInfo },
   }),
