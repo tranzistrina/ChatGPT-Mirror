@@ -53,3 +53,31 @@ jobs:
           PY
           docker compose --env-file .env.lan -f docker-compose.lan.yml config --quiet
           python3 -m py_compile scripts/setup_lan_env.py
+
+  browser-relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate password-protected standalone HTTPS Chromium relay
+        run: |
+          python3 -m unittest discover -s tests -p 'test_browser_relay.py' -v
+          python3 scripts/setup_browser_relay.py
+          docker compose --env-file .env.browser-relay -f docker-compose.browser-relay.yml config --quiet
+          docker compose --env-file .env.browser-relay -f docker-compose.browser-relay.yml config --format json > /tmp/browser-relay.json
+          python3 - <<'PY'
+          import json
+          conf = json.load(open('/tmp/browser-relay.json'))
+          assert len(conf['services']) == 1
+          service = conf['services']['browser']
+          assert service['image'] == 'lscr.io/linuxserver/chromium:latest'
+          assert service['environment']['CUSTOM_USER'] == 'mirror'
+          assert len(service['environment']['PASSWORD']) >= 30
+          assert service['environment']['HARDEN_DESKTOP'] == 'true'
+          ports = service['ports']
+          assert len(ports) == 1, ports
+          assert ports[0]['host_ip'] == '192.168.0.100', ports
+          assert ports[0]['published'] == '50002', ports
+          assert ports[0]['target'] == 3001, ports
+          assert 'privileged' not in service or not service['privileged']
+          print('Standalone HTTPS + auth + expected LAN port: OK')
+          PY
