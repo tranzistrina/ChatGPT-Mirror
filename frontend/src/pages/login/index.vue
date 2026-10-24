@@ -33,10 +33,17 @@
         <h2 class="login-title">
           <component :is="LogoOpenai" style="margin-bottom: 50px"></component>
 
-          <div v-if="IsRegister">{{ $t('mirror.k521b_5efa_5e10_6237') }}</div>
+          <div v-if="cfg.no_auth_test">{{ locale === 'ru_RU' ? 'Тестовый вход без пароля' : 'Passwordless diagnostic mode' }}</div>
+          <div v-else-if="IsRegister">{{ $t('mirror.k521b_5efa_5e10_6237') }}</div>
           <div v-else>{{ $t('mirror.k6b22_8fce_56de_6765') }}</div>
         </h2>
-        <t-loading :loading="loading">
+        <div v-if="cfg.no_auth_test" class="test-auto-login" role="status">
+          <p>{{ locale === 'ru_RU' ? 'Проверка панели: вход без логина и пароля.' : 'Testing admin panel without a username or password.' }}</p>
+          <p v-if="noAuthError">{{ locale === 'ru_RU' ? 'Автоматический вход не удался. Откройте консоль браузера.' : 'Automatic sign-in failed. Check browser developer tools.' }}</p>
+          <p v-else>{{ locale === 'ru_RU' ? 'Выполняется автоматический вход…' : 'Signing in automatically…' }}</p>
+          <t-button :loading="loading" theme="success" @click="noAuthSignIn">{{ locale === 'ru_RU' ? 'Открыть панель без пароля' : 'Open admin without password' }}</t-button>
+        </div>
+        <t-loading v-else :loading="loading">
           <t-form :data="loginForm" :label-width="0" :rules="rules" ref="loginFormRef" @submit="onSubmit">
             <t-form-item name="username">
               <t-input v-model="loginForm.username" :placeholder="$t('mirror.k7528_6237_540d')"></t-input>
@@ -110,7 +117,8 @@ const changeLanguage = (value: any) => {
 const loading = ref(false);
 const route = useRoute();
 const router = useRouter();
-const cfg = ref({ show_github: false, notice: '', allow_register: false });
+const cfg = ref({ show_github: false, notice: '', allow_register: false, no_auth_test: false });
+const noAuthError = ref(false);
 const loginForm = reactive({
   username: '',
   password: '',
@@ -121,7 +129,27 @@ const loginForm = reactive({
 
 onMounted(async () => {
   await getVersionCfg();
+  if (cfg.value.no_auth_test) await noAuthSignIn();
 });
+
+const noAuthSignIn = async () => {
+  if (loading.value) return;
+  loading.value = true;
+  noAuthError.value = false;
+  try {
+    const data = await userStore.login('/0x/user/no-auth-test-login', {});
+    if (data?.admin_token && data?.is_admin) {
+      await router.replace({ name: 'User' });
+    } else {
+      noAuthError.value = true;
+    }
+  } catch (error) {
+    noAuthError.value = true;
+    console.error('Temporary test login navigation failed', error);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const rules: Record<string, FormRule[]> = {
   username: [{ required: true, message: t('mirror.k8bf7_8f93_5165_7528_6237_540d'), trigger: 'blur' }],
