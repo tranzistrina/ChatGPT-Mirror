@@ -79,6 +79,42 @@ LAN клиент без интернета -> Mac IP:50002 -> Caddy -> лока�
 
 После запуска интерфейсы доступны на том же IP и порту 50002. Остановка через Ctrl+C. Два способа запуска одновременно использовать нельзя.
 
+## ВРЕМЕННЫЙ ПРОВЕРОЧНЫЙ ВХОД: admin / 12345
+
+Только для отладки входа. Ни один параметр .env.lan менять не нужно.
+Отдельный docker-compose.admin-test.yml включает переключатель, при котором
+скрипт backend/cli/create_init_user.py ЖЁСТКО ставит локальному администратору
+логин admin и пароль 12345. Это не пароль внутреннего ChatGPT gateway:
+ADMIN_PASSWORD в .env.lan продолжает защищать его API.
+
+Запуск проверки:
+
+    cd /Users/inh/Documents/lab/ChatGPT-Mirror
+    git switch feature/open-access-token-gateway
+    git pull --ff-only origin feature/open-access-token-gateway
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.admin-test.yml up -d --build --force-recreate
+
+Проверка Django И реального HTTP через Caddy:
+
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.admin-test.yml exec -T web python backend/cli/diagnose_login.py
+
+Если RESULT: PROXY_LOGIN_OK, браузер должен отправлять те же данные.
+Откройте в приватном окне http://192.168.0.100:50002/admin/#/login
+и введите admin / 12345.
+
+ВАЖНО: 12345 публично известен. Пока этот режим запущен, ЛЮБОЙ
+компьютер с доступом к IP Mac на порту 50002 может получить полномочия
+администратора. Не вводите реальные ChatGPT accessToken в тестовом режиме.
+
+Выключить тестовый режим и восстановить длинный пароль из .env.lan:
+
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.admin-test.yml down
+    docker compose --env-file .env.lan -f docker-compose.open-gateway.yml up -d --build --force-recreate
+
+Скрипт create_init_user.py при штатном запуске снова устанавливает
+администратору сильный пароль из .env.lan. Затем заходите с ним,
+а не с 12345. Не удаляйте Docker volumes.
+
 ## Если вход показывает китайские надписи или не принимает пароль
 
 При переходе с главной страницы используется именно локальный вход **Django /admin/#/login**, а не авторизация самого ChatGPT. По умолчанию логин — admin. Пароль из секретного файла .env.lan; случайные пароли не работают:
