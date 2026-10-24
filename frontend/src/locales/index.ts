@@ -42,7 +42,11 @@ const importMessages = computed(() => {
 
 export const i18n = createI18n({
   legacy: false,
-  locale: useLocalStorage(localeConfigKey, languages.value[0]?.startsWith('ru') ? 'ru_RU' : 'en_US').value,
+  locale: (() => {
+    const preferred = languages.value[0]?.startsWith('ru') ? 'ru_RU' : 'en_US';
+    const stored = useLocalStorage(localeConfigKey, preferred).value;
+    return stored === 'en_US' || stored === 'ru_RU' ? stored : preferred;
+  })(),
   fallbackLocale: 'en_US',
   messages: importMessages.value,
   globalInjection: true,
