@@ -1,8 +1,11 @@
 name: Verify admin frontend and backend
 on:
-  push:
-    branches: [feature/ru-en-security-no-docker]
   pull_request:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: chatgpt-mirror-verify
+  cancel-in-progress: true
 jobs:
   frontend:
     runs-on: ubuntu-latest
