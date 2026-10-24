@@ -39,7 +39,7 @@
                     <span v-if="item.auth_status === false"> {{ $t('mirror.k5df2_8fc7_671f') }} </span>
                     <span v-else-if="getGPTUsePercent(item) < 40"> {{ $t('mirror.k7a7a_95f2') }} </span>
                     <span v-else-if="getGPTUsePercent(item) < 80"> {{ $t('mirror.k5fd9_788c') }} </span>
-                    <span v-else> 繁忙 | 可用 </span>
+                    <span v-else> {{ $t('mirror.k7e41_5fd9') }} | {{ $t('mirror.k53ef_7528') }} </span>
                   </div>
                 </div>
 
