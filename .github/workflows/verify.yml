@@ -66,4 +66,5 @@ jobs:
           bash -n scripts/run_native_access_token.sh
           python3 scripts/setup_lan_env.py
           docker compose --env-file .env.lan -f docker-compose.open-gateway.yml config --quiet
+          docker build -t chatgpt-mirror-open-gateway:test gateway_native
           ! grep -Eq '^[[:space:]]*image:[[:space:]]*dairoot/|^[[:space:]]*watchtower:|^[[:space:]]*cf5s:' docker-compose.open-gateway.yml
