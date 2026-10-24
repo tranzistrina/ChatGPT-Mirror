@@ -1,9 +1,9 @@
 asgiref==3.8.1
 certifi==2024.8.30
 charset-normalizer==3.3.2
-Django==5.1.1
+Django==5.2.18
 django-simpleui==2024.8.28
-djangorestframework==3.15.2
+djangorestframework==3.16.1
 idna==3.10
 PyJWT==2.9.0
 requests==2.32.3
