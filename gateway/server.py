@@ -158,7 +158,10 @@ def ask_openai(messages: list[dict[str, str]]) -> str:
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "MirrorGateway/1.0"
-    state: State
+
+    @property
+    def state(self) -> State:
+        return self.server.state
 
     def log_message(self, format: str, *args: object) -> None:
         # Avoid logging sensitive request bodies or cookies.
