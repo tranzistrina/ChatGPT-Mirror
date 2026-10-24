@@ -34,3 +34,22 @@ jobs:
           python3 -m py_compile ../scripts/patch_upstream.py
           python3 manage.py check
           python3 manage.py test app.accounts.tests_security
+
+  lan-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Validate LAN env generation and Docker compose
+        run: |
+          python3 scripts/setup_lan_env.py
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          env = Path('.env.lan').read_text()
+          assert 'REPLACE_WITH' not in env
+          assert 'DJANGO_SECRET_KEY=' in env
+          assert 'ADMIN_PASSWORD=' in env
+          assert not (os.stat('.env.lan').st_mode & 0o077)
+          PY
+          docker compose --env-file .env.lan -f docker-compose.lan.yml config --quiet
+          python3 -m py_compile scripts/setup_lan_env.py
