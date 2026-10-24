@@ -295,7 +295,7 @@ def translate_vue(source: str) -> str:
         return "t('mirror." + key_for(value) + "')"
 
     code = re.sub(r'(?P<quote>["\x27])(?P<value>[^"\x27\n]+)(?P=quote)', js_repl, code)
-    if changed_code:
+    if changed_code and "from '@/locales'" not in code:
         code = code.replace("<script setup lang=\"ts\">",
                             "<script setup lang=\"ts\">\nimport { t } from '@/locales';", 1)
     return template + code
@@ -304,7 +304,11 @@ def translate_vue(source: str) -> str:
 def localization() -> None:
     edit("frontend/src/locales/index.ts",
          "useLocalStorage(localeConfigKey, 'zh_CN').value || languages.value[0] || 'zh_CN'",
-         "useLocalStorage(localeConfigKey, languages.value[0]?.startsWith('ru') ? 'ru_RU' : 'en_US').value")
+         """(() => {
+    const preferred = languages.value[0]?.startsWith('ru') ? 'ru_RU' : 'en_US';
+    const stored = useLocalStorage(localeConfigKey, preferred).value;
+    return stored === 'en_US' || stored === 'ru_RU' ? stored : preferred;
+  })()""")
     edit("frontend/src/locales/index.ts",
          "fallbackLocale: 'zh_CN'", "fallbackLocale: 'en_US'")
     edit("frontend/src/locales/useLocale.ts", "lang = 'zh_CN';", "lang = 'en_US';")
@@ -331,7 +335,7 @@ def localization() -> None:
               <translate-icon /> {{ locale === 'ru_RU' ? 'Русский' : 'English' }}
             </t-button>
             <t-dropdown-menu>
-              <t-dropdown-item v-for="lang in langList" :key="lang.value" @click="changeLang(lang.value as string)">
+              <t-dropdown-item v-for="lang in langList" :key="String(lang.value)" @click="changeLang(String(lang.value))">
                 {{ lang.content }}
               </t-dropdown-item>
             </t-dropdown-menu>
@@ -350,6 +354,29 @@ const changeLang = (lang: string) => {
   // Static table column labels are evaluated at component creation.
   window.location.reload();
 };''')
+    # Language choice is also available before login.
+    edit("frontend/src/pages/login/index.vue",
+         '<div style="display: flex; flex-direction: column">',
+         """<div style="display: flex; flex-direction: column">
+    <div style="align-self: flex-end; width: 145px; margin: 8px 20px">
+      <t-select :value="locale" :options="languageChoices" @change="changeLanguage" />
+    </div>""")
+    edit("frontend/src/pages/login/index.vue",
+         "import { useUserStore } from '@/store';",
+         """import { useUserStore } from '@/store';
+import { useLocale } from '@/locales/useLocale';""")
+    edit("frontend/src/pages/login/index.vue",
+         "const userStore = useUserStore();",
+         """const userStore = useUserStore();
+const { locale, changeLocale } = useLocale();
+const languageChoices = [
+  { label: 'English', value: 'en_US' },
+  { label: 'Русский', value: 'ru_RU' },
+];
+const changeLanguage = (value: any) => {
+  changeLocale(String(value));
+  window.location.reload();
+};""")
     # Only advertise the supported languages, not the original Chinese UI.
     edit("frontend/src/locales/index.ts",
          '    langCode.push(code);\n    langModuleMap.set(code, langModules[fullPath]);',
