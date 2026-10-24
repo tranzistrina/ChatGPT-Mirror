@@ -46,13 +46,13 @@
         </template>
 
         <template #chatgpt_count="{ row }">
-          <t-link theme="primary" @click="getChatGPTDetails(row)">已绑定: {{ row.chatgpt_count }} 个</t-link>
+          <t-link theme="primary" @click="getChatGPTDetails(row)">{{ $t('mirror.k5df2_7ed1_5b9a') }}: {{ row.chatgpt_count }} {{ $t('mirror.k4e2a') }}</t-link>
         </template>
 
         <template #isolated_session="{ row }">
           <t-switch :value="row.isolated_session" :custom-value="[true, false]">
             <!--             @change="(value) => changeIsolatedSession(row, Number(value))" -->
-            <template #label="slotProps">{{ slotProps.value == true ? '是' : '否' }} </template>
+            <template #label="slotProps">{{ slotProps.value ? $t('mirror.k662f') : $t('mirror.k5426') }} </template>
           </t-switch>
         </template>
 
@@ -67,7 +67,7 @@
       <!-- chatgpt 账号 -->
       <t-dialog
         v-model:visible="showChatGPTDetailsDialog"
-        title="ChatGPT 账号详情"
+        :title="'ChatGPT ' + $t('mirror.k8d26_53f7_8be6_60c5')"
         width="950px"
         :cancel-btn="null"
         :confirm-btn="null"
@@ -116,7 +116,7 @@
             />
           </t-form-item>
 
-          <t-form-item label="选择 ChatGPT" name="gptcar_list">
+          <t-form-item :label="$t('mirror.k9009_62e9') + ' ChatGPT'" name="gptcar_list">
             <t-space>
               <t-radio-group v-model="isGptcarListEmpty" class="side-mode-radio">
                 <t-radio-button key="true" :value="true" :label="$t('mirror.k6240_6709_8d26_53f7')" />
@@ -156,11 +156,11 @@
                         />
                       </t-select>
                       <span>{{ $t('mirror.k9650_5236') }}</span>
-                      <t-input-adornment prepend="每" append="分钟">
+                      <t-input-adornment :prepend="$t('mirror.k6bcf')" :append="$t('mirror.k5206_949f')">
                         <t-input-number v-model="line.every_minute" theme="normal" min="0" style="width: 70px" />
                       </t-input-adornment>
                       <span>{{ $t('mirror.k53d1_9001') }}</span>
-                      <t-input-adornment append="条">
+                      <t-input-adornment :append="$t('mirror.k6761')">
                         <t-input-number v-model="line.limit_count" theme="normal" min="0" style="width: 70px" />
                       </t-input-adornment>
                       <span>{{ $t('mirror.k6d88_606f') }}</span>
@@ -234,11 +234,11 @@
                         />
                       </t-select>
                       <span>{{ $t('mirror.k9650_5236') }}</span>
-                      <t-input-adornment prepend="每" append="分钟">
+                      <t-input-adornment :prepend="$t('mirror.k6bcf')" :append="$t('mirror.k5206_949f')">
                         <t-input-number v-model="line.every_minute" theme="normal" min="0" style="width: 70px" />
                       </t-input-adornment>
                       <span>{{ $t('mirror.k53d1_9001') }}</span>
-                      <t-input-adornment append="条">
+                      <t-input-adornment :append="$t('mirror.k6761')">
                         <t-input-number v-model="line.limit_count" theme="normal" min="0" style="width: 70px" />
                       </t-input-adornment>
                       <span>{{ $t('mirror.k6d88_606f') }}</span>
@@ -274,7 +274,7 @@
         </t-form>
       </t-dialog>
       <!-- 确认删除 dialog -->
-      <t-dialog v-model:visible="showDeleteDialog" header="确认删除该用户吗？" width="500" :on-confirm="handleDelete">
+      <t-dialog v-model:visible="showDeleteDialog" :header="$t('mirror.k786e_8ba4_5220_9664_8be5_7528_6237_5417')" width="500" :on-confirm="handleDelete">
       </t-dialog>
     </t-card>
   </div>
@@ -355,7 +355,7 @@ const columns: TableProps['columns'] = [
   { colKey: 'username', title: 'title-username', width: 200, fixed: 'left' },
   { colKey: 'isolated_session', title: t('mirror.k72ec_7acb_4f1a_8bdd'), width: 100 },
   { colKey: 'chatgpt_count', title: 'ChatGPT', width: 120 },
-  { colKey: 'use_count', title: '当日用量', width: 100 },
+  { colKey: 'use_count', title: t('mirror.k5f53_65e5_7528_91cf'), width: 100 },
   { colKey: 'last_login', title: t('mirror.k6700_8fd1_767b_5f55_65f6_95f4'), width: 160 },
   { colKey: 'expired_date', title: t('mirror.k8fc7_671f_65e5_671f'), width: 160 },
   { colKey: 'date_joined', title: t('mirror.k6ce8_518c_65f6_95f4'), width: 160 },
@@ -369,10 +369,10 @@ const modelLimitValidator: CustomValidator = (val) => {
       return { result: false, message: t('mirror.k6a21_578b_4e0d_80fd_4e3a_7a7a'), type: 'error' };
     }
     if (!item.every_minute || item.every_minute <= 0) {
-      return { result: false, message: '每分钟限制必须大于0', type: 'error' };
+      return { result: false, message: t('mirror.k6bcf_5206_949f_9650_5236_5fc5_987b_5927_4e8e') + '0', type: 'error' };
     }
     if (!item.limit_count || item.limit_count <= 0) {
-      return { result: false, message: '发送条数必须大于0', type: 'error' };
+      return { result: false, message: t('mirror.k53d1_9001_6761_6570_5fc5_987b_5927_4e8e') + '0', type: 'error' };
     }
   }
 
