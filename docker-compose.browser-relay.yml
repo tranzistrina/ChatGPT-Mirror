@@ -1,0 +1,27 @@
+# Standalone ChatGPT LAN browser relay. No private ChatGPT API, tokens or old Mirror images.
+# Use: docker compose --env-file .env.browser-relay -f docker-compose.browser-relay.yml up -d
+# Browser and HTTPS streaming are provided by LinuxServer.io Chromium (Selkies).
+name: chatgpt-mirror-browser-relay
+
+services:
+  browser:
+    image: lscr.io/linuxserver/chromium:latest
+    environment:
+      CUSTOM_USER: ${BROWSER_USER:?Run python3 scripts/setup_browser_relay.py}
+      PASSWORD: ${BROWSER_PASSWORD:?Run python3 scripts/setup_browser_relay.py}
+      TZ: ${TZ:-Europe/Rome}
+      CHROME_CLI: "--no-first-run --no-default-browser-check https://chatgpt.com/"
+      HARDEN_DESKTOP: "true"
+      SELKIES_FILE_TRANSFERS: "none"
+    ports:
+      # Only the authenticated HTTPS port. Do not expose port 3000 (HTTP).
+      - "${LAN_BIND_IP:?Run python3 scripts/setup_browser_relay.py}:${LAN_PORT:-50002}:3001"
+    volumes:
+      # Browser cookies and ChatGPT login survive container restarts.
+      - browser_profile:/config
+    shm_size: "1gb"
+    restart: unless-stopped
+    # Deliberately no privileged mode, host mounts, or Docker socket.
+
+volumes:
+  browser_profile:

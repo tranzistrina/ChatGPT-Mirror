@@ -14,3 +14,6 @@ backend/logs/*
 .env.docker
 .env.lan
 .venv/
+
+# One-password remote browser relay credentials
+.env.browser-relay
