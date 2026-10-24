@@ -53,7 +53,7 @@
                   size="large"
                 ></t-textarea>
                 <span style="font-size: 12px; color: #888">
-                  Session Token 获取说明：
+                  Session Token {{ $t('mirror.k83b7_53d6_8bf4_660e') }}:
                   <t-link target="_blank" theme="primary" size="small" :href="ChatgptTokenTutorialUrl">{{ $t('mirror.k624b_52a8_83b7_53d6') }}</t-link>
                   <!-- or
                   <t-link target="_blank" theme="primary" size="small" :href="ChatgptTokenAuthUrl">{{ $t('mirror.k81ea_52a8_83b7_53d6') }}</t-link> -->
@@ -71,11 +71,11 @@
         </t-loading>
         <div style="text-align: center; margin-top: 15px">
           <div v-if="IsRegister">
-            已经拥有帐户？<t-link :underline="false" href="/admin/#/login" style="color: #10a37f">{{ $t('mirror.k767b_5f55') }}</t-link> or
+            {{ $t('mirror.k5df2_7ecf_62e5_6709_5e10_6237') }}<t-link :underline="false" href="/admin/#/login" style="color: #10a37f">{{ $t('mirror.k767b_5f55') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
           </div>
           <div v-else>
-            没有帐户？
+            {{ $t('mirror.k6ca1_6709_5e10_6237') }}
             <t-link :underline="false" href="/admin/#/register" style="color: #10a37f">{{ $t('mirror.k6ce8_518c') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
           </div>
@@ -126,7 +126,7 @@ const rules: Record<string, FormRule[]> = {
   username: [{ required: true, message: t('mirror.k8bf7_8f93_5165_7528_6237_540d'), trigger: 'blur' }],
   password: [{ required: true, message: t('mirror.k8bf7_8f93_5165_5bc6_7801'), trigger: 'blur' }],
   chatgpt_token: [
-    { required: true, message: '请输入 Access Token 或 Session Token 或 Refresh Token', trigger: 'blur' },
+    { required: true, message: t('mirror.k8bf7_8f93_5165_20_41_63_63_65_73_73_20_54_6f_6b_65_6e_20_6216_20_53_65_73_73_69_6f_6e_20_54_6f_6b_65_6e_20_6216_20_52_65_66_72_65_73_68_20_54_6f_6b_65_6e_3002_4e00_884c_4e00_4e32'), trigger: 'blur' },
   ],
 };
 
