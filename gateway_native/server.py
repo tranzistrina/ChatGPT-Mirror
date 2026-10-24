@@ -152,6 +152,59 @@ def validate_token(token: str) -> dict:
     return {"user_info": {"email": email, "plan_type": plan}, "access_token": token}
 
 
+
+def retrieve_completed_response(access_token: str, conversation_id: str, started: float):
+    """Best-effort READ-ONLY fallback after ChatGPT sends stream_handoff.
+
+    Only accept newly created, completed assistant messages. Never fabricate
+    content or accidentally replay an older conversation message.
+    """
+    if not isinstance(conversation_id, str) or len(conversation_id) > 128:
+        return None
+    if not all(c.isalnum() or c == "-" for c in conversation_id):
+        return None
+    for _ in range(5):
+        try:
+            result = requests.get(
+                UPSTREAM + "/backend-api/conversation/" + conversation_id,
+                headers=upstream_headers(access_token),
+                timeout=(10, 20),
+                allow_redirects=False,
+            )
+            if result.status_code != 200:
+                return None
+            doc = result.json()
+        except (requests.RequestException, ValueError):
+            return None
+        if not isinstance(doc, dict) or not isinstance(doc.get("mapping"), dict):
+            return None
+        candidates = []
+        for node in doc["mapping"].values():
+            if not isinstance(node, dict):
+                continue
+            msg = node.get("message")
+            if not isinstance(msg, dict):
+                continue
+            if (msg.get("author") or {}).get("role") != "assistant":
+                continue
+            if msg.get("status") not in ("finished_successfully", "finished"):
+                continue
+            created = msg.get("create_time")
+            if not isinstance(created, (float, int)) or created < started - 1:
+                continue
+            parts = (msg.get("content") or {}).get("parts", [])
+            if not isinstance(parts, list):
+                continue
+            answer = "\n".join(x for x in parts if isinstance(x, str)).strip()
+            if answer and isinstance(msg.get("id"), str):
+                candidates.append((created, answer, msg["id"]))
+        if candidates:
+            _, text, mid = max(candidates, key=lambda item: item[0])
+            return text, mid
+        time.sleep(2)
+    return None
+
+
 def stream_conversation(session: Session, message: str, conv: str | None, parent: str | None):
     """Yield (text, conversation_id, parent_message_id, handoff_detected).
 
@@ -162,6 +215,7 @@ def stream_conversation(session: Session, message: str, conv: str | None, parent
         raise GatewayError(403, "Conversation does not belong to this local session")
     if bool(conv) != bool(parent):
         raise GatewayError(400, "conversation_id and parent_message_id must be provided together")
+    start_time = time.time()
     message_id = str(uuid4())
     body = {
         "action": "next",
@@ -241,8 +295,12 @@ def stream_conversation(session: Session, message: str, conv: str | None, parent
     finally:
         upstream.close()
     # Modern streams can hand off to WebSockets. No unsafe fake response.
+    if not text and handoff and current_conv:
+        retrieved = retrieve_completed_response(session.access_token, current_conv, start_time)
+        if retrieved:
+            text, last_parent = retrieved
     if not text and handoff:
-        raise GatewayError(501, "ChatGPT requires a stream handoff (SSE/WebSocket), not yet supported by this gateway")
+        raise GatewayError(501, "ChatGPT stream handoff could not be completed: WebSocket/Sentinel protocol unsupported")
     if not text:
         raise GatewayError(502, "ChatGPT returned no usable answer; protocol may have changed")
     if current_conv:
