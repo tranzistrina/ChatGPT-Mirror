@@ -1,0 +1,19 @@
+:50002 {
+    @admin path /admin
+    redir @admin /admin/ 308
+
+    handle_path /admin/* {
+        root * ./frontend/dist
+        try_files {path} /index.html
+        file_server
+    }
+
+    handle /0x/* {
+        reverse_proxy 127.0.0.1:8000
+    }
+
+    # Separately supplied and audited compatible gateway.
+    handle {
+        reverse_proxy {$GATEWAY_UPSTREAM}
+    }
+}
