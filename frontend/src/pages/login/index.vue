@@ -1,5 +1,8 @@
 <template>
   <div style="display: flex; flex-direction: column">
+    <div style="align-self: flex-end; width: 145px; margin: 8px 20px">
+      <t-select :value="locale" :options="languageChoices" @change="changeLanguage" />
+    </div>
     <div style="display: flex; justify-content: space-between">
       <div style="width: 400px; float: left">
         <div v-if="cfg.notice" v-text="cfg.notice"></div>
@@ -91,8 +94,18 @@ import { useRoute, useRouter } from 'vue-router';
 import LogoOpenai from '@/assets/openai-logo.svg';
 import { ChatgptTokenTutorialUrl } from '@/constants/index';
 import { useUserStore } from '@/store';
+import { useLocale } from '@/locales/useLocale';
 
 const userStore = useUserStore();
+const { locale, changeLocale } = useLocale();
+const languageChoices = [
+  { label: 'English', value: 'en_US' },
+  { label: 'Русский', value: 'ru_RU' },
+];
+const changeLanguage = (value: any) => {
+  changeLocale(String(value));
+  window.location.reload();
+};
 const loading = ref(false);
 const route = useRoute();
 const router = useRouter();
