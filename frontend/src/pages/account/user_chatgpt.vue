@@ -38,7 +38,7 @@ const columnsChatgptDetails: TableProps['columns'] = [
   { colKey: 'chatgpt_username', title: 'ChatGPT', width: 80 },
   { colKey: 'plan_type', title: t('mirror.k7c7b_578b'), width: 30 },
   { colKey: 'auth_status', title: t('mirror.k72b6_6001'), width: 30 },
-  { colKey: 'mirror_token', title: 'Mirror Token (用于 API, 该token不会变更)', width: 100 },
+  { colKey: 'mirror_token', title: 'Mirror Token (' + t('mirror.k7528_4e8e_20_41_50_49_2c_20_8be5_74_6f_6b_65_6e_4e0d_4f1a_53d8_66f4') + ')', width: 100 },
   { colKey: 'op', title: t('mirror.k514d_767b_94fe_63a5'), width: 30 },
 ];
 
