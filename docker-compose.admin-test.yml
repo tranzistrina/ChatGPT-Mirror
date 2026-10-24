@@ -1,0 +1,7 @@
+# TEMPORARY local-only diagnostic override. NOT for regular LAN use.
+# Enables admin / 12345 only in Django; the gateway internal secret remains strong.
+services:
+  web:
+    environment:
+      MIRROR_UNSAFE_ADMIN_TEST_LOGIN: "true"
+      ADMIN_USERNAME: "admin"

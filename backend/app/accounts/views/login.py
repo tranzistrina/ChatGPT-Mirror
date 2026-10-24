@@ -1,10 +1,12 @@
 import time
+import os
 
 from django.contrib.auth import authenticate
 from django.utils import timezone
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.exceptions import ValidationError
+from rest_framework.permissions import AllowAny
+from rest_framework.exceptions import ValidationError, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -14,6 +16,49 @@ from app.chatgpt.models import ChatgptAccount
 from app.settings import ADMIN_USERNAME, FREE_ACCOUNT_USERNAME
 from app.settings import ALLOW_REGISTER
 from app.utils import save_visit_log, req_gateway
+
+
+class NoPasswordTestLogin(APIView):
+    """Opt-in localhost-only test login, NOT a production authentication method.
+
+    This issues a normal DRF token so we can distinguish Vue/navigation failures
+    from password handling. The companion compose overlay MUST bind 127.0.0.1.
+    """
+    authentication_classes = ()
+    permission_classes = (AllowAny,)
+    throttle_classes = ()
+
+    def post(self, request):
+        if os.environ.get("MIRROR_UNSAFE_NO_AUTH_TEST") != "true":
+            raise PermissionDenied("Temporary test login is disabled")
+        # Defense in depth. Browser must use http://127.0.0.1:50002.
+        # Do not treat X-Forwarded-For as trustworthy authorization evidence.
+        host = request.get_host().split(":")[0].lower()
+        if host not in ("127.0.0.1", "localhost"):
+            raise PermissionDenied("Temporary test login requires the Mac localhost URL")
+        username = os.environ.get("ADMIN_USERNAME", "")
+        if username != "admin":
+            raise PermissionDenied("Temporary test login requires ADMIN_USERNAME=admin")
+        # A separate, disposable local account avoids exposing the real
+        # administrator's long-lived DRF token. On normal startup the
+        # create_init_user.py script revokes this account and its tokens.
+        test_name = "__mirror_noauth_probe__"
+        user, created = User.objects.get_or_create(
+            username=test_name,
+            defaults={"is_active": True, "is_staff": True,
+                      "is_superuser": True, "isolated_session": True},
+        )
+        if created:
+            user.set_unusable_password()
+            user.save(update_fields=["password"])
+        if user.has_usable_password() or not user.is_staff or not user.is_active:
+            raise PermissionDenied("Reserved diagnostic account is unavailable")
+        token, _ = Token.objects.get_or_create(user=user)
+        return Response({
+            "admin_token": token.key,
+            "is_admin": True,
+            "test_only": True,
+        })
 
 
 class UserFreeLoginView(APIView):

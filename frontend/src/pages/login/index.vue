@@ -33,10 +33,17 @@
         <h2 class="login-title">
           <component :is="LogoOpenai" style="margin-bottom: 50px"></component>
 
-          <div v-if="IsRegister">{{ $t('mirror.k521b_5efa_5e10_6237') }}</div>
+          <div v-if="showNoAuth">{{ locale === 'ru_RU' ? 'Тестовый вход без пароля' : 'Passwordless diagnostic mode' }}</div>
+          <div v-else-if="IsRegister">{{ $t('mirror.k521b_5efa_5e10_6237') }}</div>
           <div v-else>{{ $t('mirror.k6b22_8fce_56de_6765') }}</div>
         </h2>
-        <t-loading :loading="loading">
+        <div v-if="showNoAuth" class="test-auto-login" role="status">
+          <p>{{ locale === 'ru_RU' ? 'Проверка панели: вход без логина и пароля.' : 'Testing admin panel without a username or password.' }}</p>
+          <p v-if="noAuthError">{{ locale === 'ru_RU' ? 'Автоматический вход не удался. Откройте консоль браузера.' : 'Automatic sign-in failed. Check browser developer tools.' }}</p>
+          <p v-else>{{ locale === 'ru_RU' ? 'Выполняется автоматический вход…' : 'Signing in automatically…' }}</p>
+          <t-button :loading="loading" theme="success" @click="noAuthSignIn">{{ locale === 'ru_RU' ? 'Открыть панель без пароля' : 'Open admin without password' }}</t-button>
+        </div>
+        <t-loading v-else :loading="loading">
           <t-form :data="loginForm" :label-width="0" :rules="rules" ref="loginFormRef" @submit="onSubmit">
             <t-form-item name="username">
               <t-input v-model="loginForm.username" :placeholder="$t('mirror.k7528_6237_540d')"></t-input>
@@ -70,11 +77,12 @@
           </t-form>
         </t-loading>
         <div style="text-align: center; margin-top: 15px">
-          <div v-if="IsRegister">
+          <div v-if="!cfg.allow_register && !IsRegister">{{ locale === 'ru_RU' ? 'Доступ выдаёт администратор локальной сети.' : 'Ask your local network administrator for an account.' }}</div>
+          <div v-else-if="cfg.allow_register && IsRegister">
             {{ $t('mirror.k5df2_7ecf_62e5_6709_5e10_6237') }}<t-link :underline="false" href="/admin/#/login" style="color: #10a37f">{{ $t('mirror.k767b_5f55') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
           </div>
-          <div v-else>
+          <div v-else-if="cfg.allow_register">
             {{ $t('mirror.k6ca1_6709_5e10_6237') }}
             <t-link :underline="false" href="/admin/#/register" style="color: #10a37f">{{ $t('mirror.k6ce8_518c') }}</t-link> or
             <t-link :underline="false" style="color: red" @click="goFree">{{ $t('mirror.k514d_8d39_4f53_9a8c') }}</t-link>
@@ -109,7 +117,11 @@ const changeLanguage = (value: any) => {
 const loading = ref(false);
 const route = useRoute();
 const router = useRouter();
-const cfg = ref({ show_github: false, notice: '' });
+const cfg = ref({ show_github: false, notice: '', allow_register: false, no_auth_test: false });
+const noAuthError = ref(false);
+// Keep the temporary admin bypass available, but allow normal local users
+// to sign in through #/login?user=1 even while diagnostic mode is enabled.
+const showNoAuth = computed(() => cfg.value.no_auth_test && route.query.user !== '1');
 const loginForm = reactive({
   username: '',
   password: '',
@@ -120,7 +132,27 @@ const loginForm = reactive({
 
 onMounted(async () => {
   await getVersionCfg();
+  if (showNoAuth.value) await noAuthSignIn();
 });
+
+const noAuthSignIn = async () => {
+  if (loading.value) return;
+  loading.value = true;
+  noAuthError.value = false;
+  try {
+    const data = await userStore.login('/0x/user/no-auth-test-login', {});
+    if (data?.admin_token && data?.is_admin) {
+      await router.replace({ name: 'User' });
+    } else {
+      noAuthError.value = true;
+    }
+  } catch (error) {
+    noAuthError.value = true;
+    console.error('Temporary test login navigation failed', error);
+  } finally {
+    loading.value = false;
+  }
+};
 
 const rules: Record<string, FormRule[]> = {
   username: [{ required: true, message: t('mirror.k8bf7_8f93_5165_7528_6237_540d'), trigger: 'blur' }],
@@ -148,46 +180,34 @@ const loginType = computed(() => {
 });
 
 const onSubmit: FormProps['onSubmit'] = async ({ validateResult, firstError }) => {
-  if (validateResult === true) {
-    loading.value = true;
-    let url;
-
-    switch (loginType.value) {
-      case 'register':
-        url = '/0x/user/register';
-        break;
-      // case 'invite_register':
-      //   url = '/api/invite-register';
-      //   break;
-      default:
-        url = '/0x/user/login';
-    }
-    if (loginType.value === 'invite_register') {
-      const { hash } = window.location;
-      const paramsString = hash.split('?')[1];
-      const params = new URLSearchParams(paramsString);
-      loginForm.invite_token = params.get('invite_token');
-      loginForm.invite_id = params.get('id');
-    }
-
-    // console.log(loginForm)
+  if (validateResult !== true) {
+    console.error('Invalid login form', firstError);
+    return;
+  }
+  loading.value = true;
+  try {
+    const url = loginType.value === 'register' ? '/0x/user/register' : '/0x/user/login';
     const data = await userStore.login(url, loginForm);
-    if (data.admin_token && data.is_admin) {
-      router.push({ name: 'User' });
-    } else if (data.admin_token) {
-      return router.push({ name: 'LoginChatgpt' });
+    if (!data?.admin_token) return;
+    if (data.is_admin) {
+      await router.push({ name: 'User' });
+    } else {
+      await router.push({ name: 'LoginChatgpt' });
     }
-
+  } finally {
     loading.value = false;
-  } else {
-    console.error('表单引用未定义', firstError);
   }
 };
 
 const getVersionCfg = async () => {
-  const response = await fetch('/0x/user/version-cfg');
-  const data = await response.json();
-  Object.assign(cfg.value, { ...data });
+  try {
+    const response = await fetch('/0x/user/version-cfg', { cache: 'no-store' });
+    if (!response.ok) return;
+    const data = await response.json();
+    Object.assign(cfg.value, data);
+  } catch (_error) {
+    // Keep registration hidden if the backend cannot be reached.
+  }
 };
 
 const goFree = async () => {

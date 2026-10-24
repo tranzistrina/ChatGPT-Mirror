@@ -34,6 +34,33 @@ jobs:
           python3 -m py_compile ../scripts/patch_upstream.py
           python3 manage.py check
           python3 manage.py test app.accounts.tests_security
+          # Django test databases are destroyed after tests; prepare the
+          # persistent CI database before testing the startup admin script.
+          python3 manage.py migrate --noinput
+          # Opt-in fixed-password test must work, and normal mode must restore
+          # the strong configured admin password.
+          MIRROR_UNSAFE_ADMIN_TEST_LOGIN=true ADMIN_USERNAME=admin python cli/create_init_user.py
+          python - <<'PY'
+          import os
+          import django
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
+          django.setup()
+          from django.contrib.auth import get_user_model
+          assert get_user_model().objects.get(username="admin").check_password("12345")
+          print("Temporary admin / 12345: PASS")
+          PY
+          ADMIN_USERNAME=admin python cli/create_init_user.py
+          python - <<'PY'
+          import os
+          import django
+          os.environ.setdefault("DJANGO_SETTINGS_MODULE", "app.settings")
+          django.setup()
+          from django.contrib.auth import get_user_model
+          u = get_user_model().objects.get(username="admin")
+          assert u.check_password(os.environ["ADMIN_PASSWORD"])
+          assert not u.check_password("12345")
+          print("Strong admin password restored: PASS")
+          PY
 
   lan-compose:
     runs-on: ubuntu-latest
@@ -53,3 +80,30 @@ jobs:
           PY
           docker compose --env-file .env.lan -f docker-compose.lan.yml config --quiet
           python3 -m py_compile scripts/setup_lan_env.py
+
+  open-access-token-gateway:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Offline protocol and security regression tests
+        run: |
+          python3 -m pip install requests==2.32.3
+          python3 -m unittest discover -s gateway_native/tests -v
+          python3 -m py_compile gateway_native/server.py backend/cli/diagnose_login.py backend/cli/create_init_user.py
+          bash -n scripts/run_native_access_token.sh
+          python3 scripts/setup_lan_env.py
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml config --quiet
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.admin-test.yml config --quiet
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.no-auth-test.yml config --quiet
+          docker compose --env-file .env.lan -f docker-compose.open-gateway.yml -f docker-compose.no-auth-test.yml config --format json > /tmp/no-auth-config.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open('/tmp/no-auth-config.json'))
+          assert d['services']['web']['environment']['MIRROR_UNSAFE_NO_AUTH_TEST'] == 'true'
+          ports = d['services']['web']['ports']
+          assert len(ports) == 1, ports
+          assert ports[0]['host_ip'] == '127.0.0.1', ports
+          print('Diagnostic passwordless mode is bound to localhost only')
+          PY
+          docker build -t chatgpt-mirror-open-gateway:test gateway_native
+          ! grep -Eq '^[[:space:]]*image:[[:space:]]*dairoot/|^[[:space:]]*watchtower:|^[[:space:]]*cf5s:' docker-compose.open-gateway.yml

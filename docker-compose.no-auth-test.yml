@@ -1,0 +1,10 @@
+# TEMPORARY and UNSAFE: no-credentials browser sign-in, MAC ONLY.
+# This override forces the web port onto the Mac loopback interface.
+# DO NOT publish it on the LAN or use it with real ChatGPT accessTokens.
+services:
+  web:
+    ports: !override
+      - "127.0.0.1:${LAN_PORT:-50002}:50002"
+    environment:
+      ADMIN_USERNAME: admin
+      MIRROR_UNSAFE_NO_AUTH_TEST: "true"
