@@ -1,0 +1,36 @@
+name: Import pinned upstream and apply RU/EN/security changes
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/bootstrap.yml
+permissions:
+  contents: write
+
+jobs:
+  import-and-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout own repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4 pinned
+        with:
+          persist-credentials: true
+      - name: Import trusted pinned source as source text (do not execute upstream)
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git clone --depth 1 https://github.com/dairoot/ChatGPT-Mirror.git /tmp/mirror-upstream
+          test "$(git -C /tmp/mirror-upstream rev-parse HEAD)" = "8c3a24093f8c7b4c72a4ab39fc94afe9f3aacbf7"
+          rsync -a --exclude='.git' --exclude='README.md' /tmp/mirror-upstream/ ./
+          # Keep all secrets and build output untracked.
+          printf '\n.env.native\n.venv/\n' >> .gitignore
+          python3 scripts/patch_upstream.py
+          python3 -m compileall -q backend
+          git switch -c feature/ru-en-security-no-docker
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "feat: import upstream with security fixes, RU/EN UI and native launch"
+          git push --set-upstream origin feature/ru-en-security-no-docker
