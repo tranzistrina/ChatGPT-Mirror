@@ -20,6 +20,7 @@ django.setup()
 
 from django.conf import settings
 from django.test import Client
+from django.utils import timezone
 from app.accounts.models import User
 
 
@@ -57,8 +58,8 @@ def diagnose() -> int:
         print("RESULT: Account is not active/staff. Reinitialize admin from environment.")
         return 6
     if user.expired_date:
-        print("Account expiration check:", "EXPIRED" if user.expired_date <= django.utils.timezone.localdate() else "VALID")
-        if user.expired_date <= django.utils.timezone.localdate():
+        print("Account expiration check:", "EXPIRED" if user.expired_date <= timezone.localdate() else "VALID")
+        if user.expired_date <= timezone.localdate():
             return 7
     # Host selected from Django configuration. No request data leaves the container.
     allowed = settings.ALLOWED_HOSTS
