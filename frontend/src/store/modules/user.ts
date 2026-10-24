@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { MessagePlugin } from 'tdesign-vue-next';
 
 import { usePermissionStore } from '@/store';
+import { i18n } from '@/locales';
 import type { UserInfo } from '@/types/interface';
 
 const InitUserInfo: UserInfo = {
@@ -23,30 +24,36 @@ export const useUserStore = defineStore('user', {
   },
   actions: {
     async login(url: string, userInfo: Record<string, unknown>) {
-      const response = await fetch(url, {
-        method: 'POST',
-        body: JSON.stringify(userInfo),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      let data = null;
-      if (response.status === 200) {
-        data = await response.json();
+      const ru = i18n.global.locale.value === 'ru_RU';
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          body: JSON.stringify(userInfo),
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!response.ok) {
+          // The original Django API sometimes replies in Chinese. Show a
+          // localized, actionable error instead of untrusted raw server text.
+          const message = response.status === 400 || response.status === 401
+            ? (ru ? 'Неверный логин или пароль либо учётная запись недоступна.' : 'Wrong username or password, or account unavailable.')
+            : (ru ? `Ошибка входа (HTTP ${response.status}). Проверьте сервер.` : `Sign-in failed (HTTP ${response.status}). Check the server.`);
+          MessagePlugin.error(message);
+          return null;
+        }
+        const data = await response.json();
+        if (!data || typeof data.admin_token !== 'string') {
+          MessagePlugin.error(ru ? 'Сервер вернул неверный ответ.' : 'Invalid response from server.');
+          return null;
+        }
         this.token = data.admin_token;
-        this.is_admin = data.is_admin;
+        this.is_admin = !!data.is_admin;
         Cookies.set('user_token', data.admin_token, { expires: 7 });
-        MessagePlugin.success('登录成功');
-      } else if (response.status === 400) {
-        data = await response.json();
-        MessagePlugin.error(JSON.stringify(Object.values(data)[0]));
-      } else if (response.status === 502) {
-        MessagePlugin.error('服务未正常启动');
-        return new Response();
-      } else if (response.status === 500) {
-        MessagePlugin.error('系统异常，请稍后再试');
+        MessagePlugin.success(ru ? 'Вход выполнен' : 'Signed in');
+        return data;
+      } catch (_error) {
+        MessagePlugin.error(ru ? 'Нет связи с сервером. Проверьте Docker и адрес сайта.' : 'Cannot connect to server. Check Docker and site address.');
+        return null;
       }
-      return data;
     },
 
     async logout() {
